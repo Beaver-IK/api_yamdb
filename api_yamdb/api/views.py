@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from reviews.models import Category, Genre, Title
+from review.models import Category, Genre, Title
 from api.serializers import (
     CategorySerializer,
     GenreSerializer,
