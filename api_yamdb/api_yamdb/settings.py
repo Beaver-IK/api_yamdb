@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'api.apps.ApiConfig',
     'review.apps.ReviewConfig',
+    'users.apps.UsersConfig',
 ]
 
 MIDDLEWARE = [
@@ -69,6 +70,7 @@ DATABASES = {
     }
 }
 
+AUTH_USER_MODEL = 'users.CustomUser'
 
 # Password validation
 
