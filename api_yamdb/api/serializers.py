@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from review.models import Category, Genre, Title
+from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -112,3 +113,26 @@ class TitleReadSerializer(serializers.ModelSerializer):
             'genre',
             'rating',
         )
+
+class SignUpSerializer(serializers.Serializer):
+    """Сериализатор для авторизации."""
+
+    username = serializers.CharField(max_length=MAX_LENGTH)
+    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+
+
+class TokenSerializer(serializers.Serializer):
+    """Сериализатор для аутентификации."""
+
+    username = serializers.CharField(max_length=MAX_LENGTH)
+    confirmation_code = serializers.CharField(max_length=36)
+
+
+class ProfileSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели пользователя."""
+
+    class Meta:
+        model = CustomUser
+        fields = [
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+        ]
