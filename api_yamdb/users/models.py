@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 MAX_LENGTH = 150
-MESSAGE = (f'Возможно испошльзование букв, цифр и спецсимволов @,.,+,-,_')
+MESSAGE = (f'Возможно использование букв, цифр и спецсимволов @,.,+,-,_')
 EMAIL_LENGTH = 254
 
 
@@ -43,6 +43,18 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+
+    def create_superuser(self, username, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        return self.create_user(username, email, password, **extra_fields)
+
+class CustomUser(AbstractBaseUser):
     """Кастомная модель пользователя."""
 
     ROLE_CHOICES = [
@@ -99,5 +111,3 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def clear_code(self):
           self.activation_code = None
           self.date_registration_code_created = None
-    
-
