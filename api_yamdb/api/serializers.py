@@ -1,6 +1,8 @@
+from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework.relations import SlugRelatedField
 
-from review.models import Category, Genre, Title
+from review.models import Category, Genre, Title, Comment, Review
 from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH
 
 
@@ -114,6 +116,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
             'rating',
         )
 
+
 class SignUpSerializer(serializers.Serializer):
     """Сериализатор для авторизации."""
 
@@ -136,3 +139,43 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = [
             'username', 'email', 'first_name', 'last_name', 'bio', 'role'
         ]
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели отзыва."""
+
+    author = SlugRelatedField(read_only=True, slug_field='username')
+    title = TitleReadSerializer(read_only=True)
+
+    class Meta:
+        model = Review
+        fields = ('id', 'text', 'score', 'author', 'pub_date', 'title')
+        read_only_fields = ('id', 'author', 'pub_date')
+
+    def validate(self, data):
+        request = self.context.get('request')
+        if request.method == 'POST':
+            title_id = self.context['view'].kwargs.get('title_id')
+            author = request.user
+            if Review.objects.filter(title_id=title_id, author=author).exists():
+                raise ValidationError(
+                    'Вы уже оставили отзыв для этого произведения.'
+                )
+        return data
+
+    def create(self, validated_data):
+        validated_data['author'] = self.context['request'].user
+        validated_data['title_id'] = self.context['view'].kwargs.get('title_id')
+        return Review.objects.create(**validated_data)
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели комментария."""
+
+    author = SlugRelatedField(read_only=True, slug_field='username')
+    review = ReviewSerializer(read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = '__all__'
+        read_only_fields = ('id', 'author', 'review', 'pub_date')
