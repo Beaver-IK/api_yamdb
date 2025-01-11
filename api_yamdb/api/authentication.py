@@ -32,31 +32,31 @@ def decode_token(token):
 
 class JWTAuthentication(authentication.BaseAuthentication):
         def authenticate(self, request):
-           auth_header = request.META.get('HTTP_AUTHORIZATION')
-           if not auth_header:
-                return None
-           try:
-             prefix, token = auth_header.split(' ')
-             if prefix != 'Bearer':
-                 raise exceptions.AuthenticationFailed('Invalid token prefix')
-           except ValueError:
-               raise exceptions.AuthenticationFailed('Malformed auth header')
+            auth_header = request.META.get('HTTP_AUTHORIZATION')
+            if not auth_header:
+                    return None
+            try:
+                prefix, token = auth_header.split(' ')
+                if prefix != 'Bearer':
+                    raise exceptions.AuthenticationFailed('Invalid token prefix')
+            except ValueError:
+                raise exceptions.AuthenticationFailed('Malformed auth header')
 
-           try:
-              payload = decode_token(token)
-           except exceptions.AuthenticationFailed:
-             raise
-           user_id = payload.get('user_id')
-           if not user_id:
-                raise exceptions.AuthenticationFailed('User id not in the token payload.')
-           try:
-                user = CustomUser.objects.get(user_id=user_id)
-           except CustomUser.DoesNotExist:
-                raise exceptions.AuthenticationFailed(
-                    'Пользователь не найден'
-                )
-           if not user.is_active:
-                raise exceptions.AuthenticationFailed(
-                    'Пользователь не активен'
-                )
-           return (user, token)
+            try:
+                payload = decode_token(token)
+            except exceptions.AuthenticationFailed:
+                raise
+            user_id = payload.get('user_id')
+            if not user_id:
+                    raise exceptions.AuthenticationFailed('User id not in the token payload.')
+            try:
+                    user = CustomUser.objects.get(user_id=user_id)
+            except CustomUser.DoesNotExist:
+                    raise exceptions.AuthenticationFailed(
+                        'Пользователь не найден'
+                    )
+            if not user.is_active:
+                    raise exceptions.AuthenticationFailed(
+                        'Пользователь не активен'
+                    )
+            return (user, token)
