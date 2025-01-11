@@ -103,7 +103,8 @@ class TitleViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
 class SignUpView(APIView):
-    """Представление для регистрации и получения кода подтверждения."""
+    """Класс представления для регистрации и получения кода подтверждения."""
+
     permission_classes = [AllowAny]
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
@@ -125,6 +126,7 @@ class SignUpView(APIView):
 
 
 class TokenView(APIView):
+    """Класс представления для аутентификации."""
     permission_classes = [AllowAny]
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
