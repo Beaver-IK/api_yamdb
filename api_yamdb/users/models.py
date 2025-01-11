@@ -3,10 +3,11 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
-from django.utils import timezone
+from datetime import timezone, datetime, timedelta
+
 
 MAX_LENGTH = 150
-MESSAGE = (f'Возможно испошльзование букв, цифр и спецсимволов @,.,+,-,_')
+MESSAGE = (f'Возможно использование букв, цифр и спецсимволов @,.,+,-,_')
 EMAIL_LENGTH = 254
 
 
@@ -73,6 +74,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         choices=ROLE_CHOICES,
         default='user'
     )
+    activation_code = models.CharField(max_length=36, blank=True, null=True)
+    validity_code = models.DateTimeField(
+        blank=True,
+        null=True
+    )
     is_active = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
@@ -94,10 +100,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def generate_code(self):
            import uuid
            self.activation_code = str(uuid.uuid4())
-           self.date_registration_code_created = timezone.now()
+           self.validity_code = datetime.now(timezone.utc) + timedelta(hours=24)
 
     def clear_code(self):
           self.activation_code = None
-          self.date_registration_code_created = None
-    
-
+          self.validity_code = None
