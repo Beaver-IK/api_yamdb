@@ -52,7 +52,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
       ('admin', 'Admin')
     ]
 
-    # user_id = models.BigAutoField(primary_key=True, editable=False)
     username = models.CharField(
         max_length=MAX_LENGTH,
         unique=True,
