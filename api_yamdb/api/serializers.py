@@ -1,7 +1,8 @@
 from rest_framework import serializers
+from django.core.validators import RegexValidator
 
 from review.models import Category, Genre, Title
-from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH
+from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -117,7 +118,16 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class SignUpSerializer(serializers.Serializer):
     """Сериализатор для авторизации."""
 
-    username = serializers.CharField(max_length=MAX_LENGTH)
+    username = serializers.CharField(
+        max_length=MAX_LENGTH,
+        validators=[
+            RegexValidator(
+                regex=r'^[\w.@+-]+\Z',
+                message=MESSAGE,
+                code='invalid_username',   
+            ),
+        ],
+    )
     email = serializers.EmailField(max_length=EMAIL_LENGTH)
 
 

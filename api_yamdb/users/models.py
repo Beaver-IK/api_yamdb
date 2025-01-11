@@ -52,12 +52,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
       ('admin', 'Admin')
     ]
 
-    user_id = models.BigAutoField(primary_key=True, editable=False)
+    # user_id = models.BigAutoField(primary_key=True, editable=False)
     username = models.CharField(
         max_length=MAX_LENGTH,
         unique=True,
         help_text=f'Максимальная длина {MAX_LENGTH} символов. {MESSAGE}',
-        validators= [
+        validators=[
             RegexValidator(
                 regex=r'^[\w.@+-]+\Z',
                 message=MESSAGE,
