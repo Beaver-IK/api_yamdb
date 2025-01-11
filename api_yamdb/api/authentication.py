@@ -7,7 +7,7 @@ from users.models import CustomUser
 
 def generate_token(user: CustomUser):
     payload = {
-        'user_id' : user.user_id,
+        'id' : user.id,
         'username': user.username,
         'email': user.email,
         'exp': datetime.now(timezone.utc) + timedelta(hours=24),
@@ -53,10 +53,10 @@ class JWTAuthentication(authentication.BaseAuthentication):
                     user = CustomUser.objects.get(user_id=user_id)
             except CustomUser.DoesNotExist:
                     raise exceptions.AuthenticationFailed(
-                        'Пользователь не найден'
+                        'Пользователь не найден.'
                     )
             if not user.is_active:
                     raise exceptions.AuthenticationFailed(
-                        'Пользователь не активен'
+                        'Пользователь не активен.'
                     )
             return (user, token)

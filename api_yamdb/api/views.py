@@ -8,7 +8,8 @@ from api.serializers import (
     TitleSerializer,
     TitleListCreateSerializer,
     SignUpSerializer,
-    TokenSerializer
+    TokenSerializer,
+    ResendCodeSerializer
 )
 from api.utils import send_activation_email
 from review.models import Category, Genre, Title
@@ -147,3 +148,22 @@ class TokenView(APIView):
         user.save()
         token = generate_token(user)
         return Response({'token': token}, status=status.HTTP_200_OK)
+
+
+class ResendActivationCodeView(APIView):
+    """Класс представления, для повторной отправки кода подтверждения."""
+
+    permission_classes = [AllowAny]
+    def post(self, request):
+        serializer = ResendCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data['username']
+        try:
+          user = CustomUser.objects.get(username=username)
+        except CustomUser.DoesNotExist:
+          raise NotFound('Пользователь не существует.')
+        user.generate_code()
+        user.save()
+        send_activation_email(user, request)
+        return Response({'message': 'Новый код отправлен на почту'},
+                        status=status.HTTP_200_OK)

@@ -1,5 +1,4 @@
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 from django.core.validators import RegexValidator
 
 from review.models import Category, Genre, Title
@@ -116,10 +115,9 @@ class TitleReadSerializer(serializers.ModelSerializer):
             'genre',
             'rating',
         )
-
-class SignUpSerializer(serializers.Serializer):
-    """Сериализатор для авторизации."""
-
+        
+class BaseAuthSerializer(serializers.Serializer):
+    
     username = serializers.CharField(
         max_length=MAX_LENGTH,
         validators=[
@@ -131,14 +129,21 @@ class SignUpSerializer(serializers.Serializer):
             NotMeValidator(),
         ],
     )
+
+class SignUpSerializer(BaseAuthSerializer):
+    """Сериализатор для авторизации."""
+
     email = serializers.EmailField(max_length=EMAIL_LENGTH)
 
 
-class TokenSerializer(serializers.Serializer):
+class TokenSerializer(BaseAuthSerializer):
     """Сериализатор для аутентификации."""
 
-    username = serializers.CharField(max_length=MAX_LENGTH)
     confirmation_code = serializers.CharField(max_length=36)
+
+
+class ResendCodeSerializer(BaseAuthSerializer):
+    """Сериализатор для повторной отправки кода подтверждения."""
 
 
 class ProfileSerializer(serializers.ModelSerializer):
