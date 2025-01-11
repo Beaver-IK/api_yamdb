@@ -1,8 +1,10 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from django.core.validators import RegexValidator
 
 from review.models import Category, Genre, Title
 from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
+from api.utils import NotMeValidator
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -125,7 +127,8 @@ class SignUpSerializer(serializers.Serializer):
                 regex=r'^[\w.@+-]+\Z',
                 message=MESSAGE,
                 code='invalid_username',   
-            ),
+            ), 
+            NotMeValidator(),
         ],
     )
     email = serializers.EmailField(max_length=EMAIL_LENGTH)

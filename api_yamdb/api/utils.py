@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.core.mail import send_mail
+from django.utils.deconstruct import deconstructible
+from rest_framework import serializers
 
 
 def send_activation_email(user, request):
@@ -12,3 +14,13 @@ def send_activation_email(user, request):
                      message,
                      settings.EMAIL_HOST_USER,
                     [user.email])
+
+
+@deconstructible
+class NotMeValidator:
+        """Валидатор для поля username."""
+        def __call__(self, value):
+                if value.lower() == 'me':
+                        raise serializers.ValidationError(
+                                'Нельзя использовать "me" '
+                                'в качестве "username"')
