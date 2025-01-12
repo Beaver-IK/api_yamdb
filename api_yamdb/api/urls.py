@@ -8,7 +8,8 @@ from api.views import (
     CommentViewSet,
     SignUpView,
     TokenView,
-    ResendActivationCodeView
+    ResendActivationCodeView,
+    UsersViewSet
 )
 
 router = DefaultRouter()
@@ -25,6 +26,7 @@ router.register(
     CommentViewSet,
     basename='comment'
 )
+router.register('users', UsersViewSet, basename='users')
 
 auth_url = [
     (path('signup/', SignUpView.as_view(),

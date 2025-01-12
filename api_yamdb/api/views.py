@@ -10,20 +10,22 @@ from api.serializers import (
     CommentSerializer,
     SignUpSerializer,
     TokenSerializer,
-    ResendCodeSerializer
+    ResendCodeSerializer,
+    ProfileSerializer
 )
 from reviews.models import Category, Genre, Title, Review
 from api.utils import send_activation_email
 from users.models import CustomUser
-from users.authentication import generate_token
+from users.authentication import generate_jwt_token
 
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, mixins, viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework.exceptions import ValidationError, NotFound
+from rest_framework.exceptions import ValidationError, NotFound, bad_request
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from datetime import timezone, datetime
 
 
@@ -179,18 +181,20 @@ class TokenView(APIView):
         username = serializer.validated_data['username']
         code = serializer.validated_data['confirmation_code']
         try:
-            user = CustomUser.objects.get(username=username,
-                                          activation_code=code)
+            user = CustomUser.objects.get(username=username)
         except CustomUser.DoesNotExist:
             raise NotFound('Неверный код активации или имя пользователя')
         if (not user.validity_code or 
-            datetime.now(timezone.utc) > user.validity_code
+            datetime.now(timezone.utc) > user.validity_code or
+            code != user.activation_code
         ):
-            raise NotFound('Срок действия кода истек.')
+            return Response({
+                'message': 'Неверный код иди срок действия кода истек.'
+                }, status=status.HTTP_400_BAD_REQUEST)
         user.is_active = True
         user.clear_code()
         user.save()
-        token = generate_token(user)
+        token = generate_jwt_token(user)
         return Response({'token': token}, status=status.HTTP_200_OK)
 
 
@@ -211,3 +215,10 @@ class ResendActivationCodeView(APIView):
         send_activation_email(user, request)
         return Response({'message': 'Новый код отправлен на почту'},
                         status=status.HTTP_200_OK)
+
+
+class UsersViewSet(ModelViewSet):
+    queryset = CustomUser.objects.all()
+    permission_classes = [IsAdminOrReadOnly]
+    serializer_class = ProfileSerializer
+    lookup_field = 'username'

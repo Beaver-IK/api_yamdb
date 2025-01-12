@@ -156,9 +156,9 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [
+        fields = (
             'username', 'email', 'first_name', 'last_name', 'bio', 'role'
-        ]
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
