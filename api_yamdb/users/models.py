@@ -100,4 +100,3 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
           self.activation_code = None
           self.date_registration_code_created = None
     
-
