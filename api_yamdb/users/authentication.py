@@ -31,11 +31,12 @@ def decode_token(token):
 
 
 class JWTAuthentication(authentication.BaseAuthentication):
-
+    
     def authenticate(self, request):
         auth_header = request.META.get('HTTP_AUTHORIZATION')
         if not auth_header:
                 return None
+
         try:
             prefix, token = auth_header.split(' ')
             if prefix != 'Bearer':
@@ -50,15 +51,18 @@ class JWTAuthentication(authentication.BaseAuthentication):
             raise
         user_id = payload.get('id')
         if not user_id:
-                raise exceptions.AuthenticationFailed('User id not in the token payload.')
+            raise exceptions.AuthenticationFailed(
+                'В токене отсутсвует id пользователя.')
+
         try:
-                user = CustomUser.objects.get(user_id=user_id)
+            user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
-                raise exceptions.AuthenticationFailed(
-                    'Пользователь не найден.'
-                )
+            raise exceptions.AuthenticationFailed(
+                'Пользователь не найден.'
+            )
+
         if not user.is_active:
-                raise exceptions.AuthenticationFailed(
-                    'Пользователь не активен.'
-                )
+            raise exceptions.AuthenticationFailed(
+                'Пользователь не активен.'
+            )
         return (user, token)

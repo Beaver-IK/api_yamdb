@@ -30,7 +30,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('role', 'moderator')
         extra_fields.setdefault('is_active', True)
         if extra_fields.get('role') != 'moderator':
-            raise ValueError('Superuser must have role=moderator.')
+            raise ValueError('Пользователь должен иметь роль Модератора.')
         return self.create_user(username, email, password, **extra_fields)
 
     def create_superuser(self, username, email, password=None, **extra_fields):
@@ -39,7 +39,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
         if extra_fields.get('role') != 'admin':
-            raise ValueError('Superuser must have role=admin.')
+            raise ValueError('Пользователь должен иметь роль Администратора.')
         return self.create_user(username, email, password, **extra_fields)
 
 
@@ -52,7 +52,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
       ('admin', 'Admin')
     ]
 
-    user_id = models.BigAutoField(primary_key=True, editable=False)
     username = models.CharField(
         max_length=MAX_LENGTH,
         unique=True,
