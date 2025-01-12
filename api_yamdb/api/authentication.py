@@ -21,42 +21,44 @@ def decode_token(token):
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS384'])
         return payload
     except jwt.ExpiredSignatureError:
-        raise exceptions.AuthenticationFailed('Token has expired')
+        raise exceptions.AuthenticationFailed('Срок действия токена истек!')
     except jwt.InvalidSignatureError:
-        raise exceptions.AuthenticationFailed('Invalid token signature')
+        raise exceptions.AuthenticationFailed('Недопустимая подпись токена!')
     except jwt.DecodeError:
-        raise exceptions.AuthenticationFailed('Invalid token')
+        raise exceptions.AuthenticationFailed('Недопустимый токен!')
     except Exception as e:
-        raise exceptions.AuthenticationFailed(f'An error occurred: {e}')
+        raise exceptions.AuthenticationFailed(f'Ошибка {e}')
 
 
 class JWTAuthentication(authentication.BaseAuthentication):
-        def authenticate(self, request):
-            auth_header = request.META.get('HTTP_AUTHORIZATION')
-            if not auth_header:
-                    return None
-            try:
-                prefix, token = auth_header.split(' ')
-                if prefix != 'Bearer':
-                    raise exceptions.AuthenticationFailed('Invalid token prefix')
-            except ValueError:
-                raise exceptions.AuthenticationFailed('Malformed auth header')
+    
+    def authenticate(self, request):
+        auth_header = request.META.get('HTTP_AUTHORIZATION')
+        if not auth_header:
+                return None
+        try:
+            prefix, token = auth_header.split(' ')
+            if prefix != 'Bearer':
+                raise exceptions.AuthenticationFailed('Недопустимый префикс.')
+        except ValueError:
+            raise exceptions.AuthenticationFailed(
+                'Неправильно сформированный заголовок авторизации')
 
-            try:
-                payload = decode_token(token)
-            except exceptions.AuthenticationFailed:
-                raise
-            user_id = payload.get('user_id')
-            if not user_id:
-                    raise exceptions.AuthenticationFailed('User id not in the token payload.')
-            try:
-                    user = CustomUser.objects.get(user_id=user_id)
-            except CustomUser.DoesNotExist:
-                    raise exceptions.AuthenticationFailed(
-                        'Пользователь не найден.'
-                    )
-            if not user.is_active:
-                    raise exceptions.AuthenticationFailed(
-                        'Пользователь не активен.'
-                    )
-            return (user, token)
+        try:
+            payload = decode_token(token)
+        except exceptions.AuthenticationFailed:
+            raise
+        user_id = payload.get('id')
+        if not user_id:
+                raise exceptions.AuthenticationFailed('User id not in the token payload.')
+        try:
+                user = CustomUser.objects.get(user_id=user_id)
+        except CustomUser.DoesNotExist:
+                raise exceptions.AuthenticationFailed(
+                    'Пользователь не найден.'
+                )
+        if not user.is_active:
+                raise exceptions.AuthenticationFailed(
+                    'Пользователь не активен.'
+                )
+        return (user, token)
