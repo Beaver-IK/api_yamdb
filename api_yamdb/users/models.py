@@ -4,9 +4,10 @@ from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
 from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from datetime import timezone, datetime, timedelta
 
 MAX_LENGTH = 150
-MESSAGE = (f'Возможно испошльзование букв, цифр и спецсимволов @,.,+,-,_')
+MESSAGE = (f'Возможно использование букв, цифр и спецсимволов @,.,+,-,_')
 EMAIL_LENGTH = 254
 
 
@@ -29,7 +30,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('role', 'moderator')
         extra_fields.setdefault('is_active', True)
         if extra_fields.get('role') != 'moderator':
-            raise ValueError('Superuser must have role=moderator.')
+            raise ValueError('Пользователь должен иметь роль Модератора.')
         return self.create_user(username, email, password, **extra_fields)
 
     def create_superuser(self, username, email, password=None, **extra_fields):
@@ -38,7 +39,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
         if extra_fields.get('role') != 'admin':
-            raise ValueError('Superuser must have role=admin.')
+            raise ValueError('Пользователь должен иметь роль Администратора.')
         return self.create_user(username, email, password, **extra_fields)
 
 
@@ -51,12 +52,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
       ('admin', 'Admin')
     ]
 
-    user_id = models.BigAutoField(primary_key=True, editable=False)
     username = models.CharField(
         max_length=MAX_LENGTH,
         unique=True,
         help_text=f'Максимальная длина {MAX_LENGTH} символов. {MESSAGE}',
-        validators= [
+        validators=[
             RegexValidator(
                 regex=r'^[\w.@+-]+\Z',
                 message=MESSAGE,
@@ -72,6 +72,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=10,
         choices=ROLE_CHOICES,
         default='user'
+    )
+    activation_code = models.CharField(max_length=36, blank=True, null=True)
+    validity_code = models.DateTimeField(
+        blank=True,
+        null=True
     )
     is_active = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -94,9 +99,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def generate_code(self):
            import uuid
            self.activation_code = str(uuid.uuid4())
-           self.date_registration_code_created = timezone.now()
+           self.validity_code = datetime.now(timezone.utc) + timedelta(hours=24)
 
     def clear_code(self):
           self.activation_code = None
-          self.date_registration_code_created = None
+          self.validity_code = None
     
