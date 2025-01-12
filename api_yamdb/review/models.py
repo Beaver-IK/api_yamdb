@@ -47,12 +47,15 @@ class Title(models.Model):
         related_name='title_reviews',
         blank=True
     )
-    rating = models.FloatField(default=0.0)
+    rating = models.FloatField(null=True, default=None)
 
     def update_average_rating(self):
         """Обновляет средний рейтинг произведения."""
         average = self.reviews.aggregate(models.Avg('score'))['score__avg']
-        self.rating = round(average, 1) if average is not None else 0.0
+        if average is None:
+            self.rating = None
+        else:
+            self.rating = round(average, 1)
         self.save(update_fields=['rating'])
 
     class Meta:
@@ -72,14 +75,14 @@ class Review(models.Model):
         related_name='reviews'
     )
     title = models.ForeignKey(
-        Title, 
+        Title,
         on_delete=models.CASCADE,
         related_name='reviews_set'
     )
     text = models.TextField()
     score = models.PositiveIntegerField(
         validators=[MaxValueValidator(10)],
-        help_text="Оценка от 1 до 10",
+        help_text='Оценка от 1 до 10',
         null=True,
         blank=True
     )
@@ -102,7 +105,7 @@ class Review(models.Model):
         self.title.update_average_rating()
 
     def __str__(self):
-        return f"Отзыв для {self.title.name} от {self.author.username}"
+        return f'Отзыв для {self.title.name} от {self.author.username}'
 
 
 class Comment(models.Model):

@@ -1,11 +1,10 @@
-from api.permissions import IsAdminOrReadOnly, IsAuthorOrReadOnly, IsAdminOrAuthor, IsStaffOrAuthor
+from api.permissions import IsAdminOrReadOnly, IsAuthorOrModeratorOrAdmin
 from api.serializers import (
     CategoryListCreateSerializer,
     CategorySerializer,
     GenreListCreateSerializer,
     GenreSerializer,
     TitleReadSerializer,
-    TitleSerializer,
     TitleListCreateSerializer,
     ReviewSerializer,
     CommentSerializer
@@ -101,7 +100,8 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления отзывами."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsStaffOrAuthor]
+    permission_classes = [IsAuthenticatedOrReadOnly,
+                          IsAuthorOrModeratorOrAdmin]
     http_method_names = ['get', 'post', 'patch', 'delete']
     queryset = Review.objects.all()
 
@@ -122,7 +122,8 @@ class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления комментариями."""
 
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsStaffOrAuthor]
+    permission_classes = [IsAuthenticatedOrReadOnly,
+                          IsAuthorOrModeratorOrAdmin]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_review(self):
