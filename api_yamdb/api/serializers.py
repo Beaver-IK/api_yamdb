@@ -3,7 +3,7 @@ from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
 from django.core.validators import RegexValidator
 
-from review.models import Category, Genre, Title, Comment, Review
+from reviews.models import Category, Genre, Title, Comment, Review
 from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
 from api.utils import NotMeValidator
 
