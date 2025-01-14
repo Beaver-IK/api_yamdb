@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
@@ -83,6 +85,14 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'year', 'description', 'category', 'genre')
         read_only_fields = ('id',)
 
+    def validate_year(self, value):
+        current_year = datetime.now().year
+        if value > current_year:
+            raise serializers.ValidationError(
+                'Год выпуска не может быть больше текущего!'
+            )
+        return value
+
     def create(self, validated_data):
         genres = validated_data.pop('genre')
         title = Title.objects.create(**validated_data)
@@ -128,8 +138,8 @@ class BaseAuthSerializer(serializers.Serializer):
             RegexValidator(
                 regex=r'^[\w.@+-]+\Z',
                 message=MESSAGE,
-                code='invalid_username',   
-            ), 
+                code='invalid_username',
+            ),
             NotMeValidator(),
         ],
     )
@@ -156,9 +166,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = [
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
-        ]
+        fields = ['username', 'email', 'first_name', 'last_name', 'bio', 'role']
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -177,20 +185,13 @@ class ReviewSerializer(serializers.ModelSerializer):
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(
-                title_id=title_id,
-                author=author
-            ).exists():
-                raise ValidationError(
-                    'Вы уже оставили отзыв для этого произведения.'
-                )
+            if Review.objects.filter(title_id=title_id, author=author).exists():
+                raise ValidationError('Вы уже оставили отзыв для этого произведения.')
         return data
 
     def create(self, validated_data):
         validated_data['author'] = self.context['request'].user
-        validated_data['title_id'] = self.context['view'].kwargs.get(
-            'title_id'
-        )
+        validated_data['title_id'] = self.context['view'].kwargs.get('title_id')
         return Review.objects.create(**validated_data)
 
 
