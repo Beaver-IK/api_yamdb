@@ -150,7 +150,7 @@ class TokenSerializer(BaseAuthSerializer):
     confirmation_code = serializers.CharField(max_length=36)
 
 
-class ProfileSerializer(BaseAuthSerializer):
+class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
     class Meta:

@@ -215,6 +215,6 @@ class UsersViewSet(ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
 
-class MeViewSet(APIView):
+"""class MeViewSet(APIView):
     permission_classes = [IsAuthenticated]
-    
+    """
