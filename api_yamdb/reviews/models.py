@@ -74,7 +74,9 @@ class Review(models.Model):
         related_name='reviews',
     )
     title = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='reviews_set'
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews_set',
     )
     text = models.TextField()
     score = models.PositiveIntegerField(
@@ -114,7 +116,9 @@ class Comment(models.Model):
         related_name='comments',
     )
     review = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comments'
+        Review,
+        on_delete=models.CASCADE,
+        related_name='comments',
     )
     text = models.TextField()
     pub_date = models.DateTimeField(
