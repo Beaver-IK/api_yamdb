@@ -29,8 +29,6 @@ class CustomUserManager(BaseUserManager):
     def create_moderator(self, username, email, password=None, **extra_fields):
         extra_fields.setdefault('role', 'moderator')
         extra_fields.setdefault('is_active', True)
-        if extra_fields.get('role') != 'moderator':
-            raise ValueError('Пользователь должен иметь роль Модератора.')
         return self.create_user(username, email, password, **extra_fields)
 
     def create_superuser(self, username, email, password=None, **extra_fields):
@@ -38,8 +36,6 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
-        if extra_fields.get('role') != 'admin':
-            raise ValueError('Пользователь должен иметь роль Администратора.')
         return self.create_user(username, email, password, **extra_fields)
 
 
@@ -104,4 +100,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def clear_code(self):
           self.activation_code = None
           self.validity_code = None
-    
+
+    @classmethod
+    def exists(cls, **kwargs):
+        return cls.objects.filter(**kwargs).exists()
