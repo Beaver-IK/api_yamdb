@@ -41,3 +41,15 @@ class IsAuthorOrModeratorOrAdmin(BasePermission):
         ) in ('admin', 'moderator'):
             return True
         return obj.author == request.user
+
+
+class IsAdminOnly(BasePermission):
+    """Разрешение доступа только администратору."""
+    
+    def has_permission(self, request, view):
+        return (request.user.is_superuser or getattr(
+            request.user,
+            'role',
+            None
+            ) == 'admin'
+        )

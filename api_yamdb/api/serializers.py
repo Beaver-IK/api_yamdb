@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from rest_framework.relations import SlugRelatedField
+from rest_framework.validators import UniqueValidator
 from django.core.validators import RegexValidator
 
 from reviews.models import Category, Genre, Title, Comment, Review
@@ -138,7 +139,9 @@ class BaseAuthSerializer(serializers.Serializer):
 class SignUpSerializer(BaseAuthSerializer):
     """Сериализатор для авторизации."""
 
-    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+    email = serializers.EmailField(
+        max_length=EMAIL_LENGTH
+    )
 
 
 class TokenSerializer(BaseAuthSerializer):
@@ -147,18 +150,14 @@ class TokenSerializer(BaseAuthSerializer):
     confirmation_code = serializers.CharField(max_length=36)
 
 
-class ResendCodeSerializer(BaseAuthSerializer):
-    """Сериализатор для повторной отправки кода подтверждения."""
-
-
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
     class Meta:
         model = CustomUser
-        fields = [
+        fields = (
             'username', 'email', 'first_name', 'last_name', 'bio', 'role'
-        ]
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):

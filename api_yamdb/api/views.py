@@ -1,4 +1,4 @@
-from api.permissions import IsAdminOrReadOnly, IsAuthorOrModeratorOrAdmin
+from api.permissions import IsAdminOrReadOnly, IsAuthorOrModeratorOrAdmin, IsAdminOnly
 from api.serializers import (
     CategoryListCreateSerializer,
     CategorySerializer,
@@ -10,20 +10,21 @@ from api.serializers import (
     CommentSerializer,
     SignUpSerializer,
     TokenSerializer,
-    ResendCodeSerializer
+    ProfileSerializer
 )
 from reviews.models import Category, Genre, Title, Review
 from api.utils import send_activation_email
 from users.models import CustomUser
-from users.authentication import generate_token
+from users.authentication import generate_jwt_token
 
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, mixins, viewsets
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
-from rest_framework.exceptions import ValidationError, NotFound
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.exceptions import ValidationError, NotFound, bad_request
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from datetime import timezone, datetime
 
 
@@ -150,64 +151,70 @@ class SignUpView(APIView):
     """Класс представления для регистрации и получения кода подтверждения."""
 
     permission_classes = [AllowAny]
+    http_method_names = ['post']
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
-        if CustomUser.objects.filter(email=email).exists():
-            raise ValidationError('Этот email уж занят')
-        if CustomUser.objects.filter(username=username).exists():
-            raise ValidationError('Этот username уже используется.')
-        user = CustomUser.objects.create_user(username=username, email=email)
-        user.generate_code()
-        user.save()
-        send_activation_email(user, request)
-        return Response(
-            {'email': user.email, 'username': user.username
-            }, 
-            status=status.HTTP_200_OK)
+        try:
+            user = CustomUser.objects.get(email=email, username=username)
+            user.generate_code()
+            user.save()
+            send_activation_email(user, request)
+        except CustomUser.DoesNotExist:
+            if (CustomUser.exists(email=email) or 
+                CustomUser.exists(username=username)):
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            user = CustomUser.objects.create_user(username=username, email=email)
+            user.generate_code()
+            user.save()
+            send_activation_email(user, request)
+        return Response(dict(
+            email=user.email,
+            username=user.username
+            ), status=status.HTTP_200_OK
+        )
 
 
 class TokenView(APIView):
     """Класс представления для аутентификации."""
 
     permission_classes = [AllowAny]
+    http_method_names = ['post']
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         code = serializer.validated_data['confirmation_code']
         try:
-            user = CustomUser.objects.get(username=username,
-                                          activation_code=code)
+            user = CustomUser.objects.get(username=username)
         except CustomUser.DoesNotExist:
             raise NotFound('Неверный код активации или имя пользователя')
         if (not user.validity_code or 
-            datetime.now(timezone.utc) > user.validity_code
+            datetime.now(timezone.utc) > user.validity_code or
+            code != user.activation_code
         ):
-            raise NotFound('Срок действия кода истек.')
+            return Response({
+                'message': 'Неверный код иди срок действия кода истек.'
+                }, status=status.HTTP_400_BAD_REQUEST)
         user.is_active = True
         user.clear_code()
         user.save()
-        token = generate_token(user)
+        token = generate_jwt_token(user)
         return Response({'token': token}, status=status.HTTP_200_OK)
 
 
-class ResendActivationCodeView(APIView):
-    """Класс представления, для повторной отправки кода подтверждения."""
+class UsersViewSet(ModelViewSet):
+    queryset = CustomUser.objects.all()
+    permission_classes = [IsAuthenticated, IsAdminOnly]
+    serializer_class = ProfileSerializer
+    lookup_field = 'username'
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('$username',)
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
-    permission_classes = [AllowAny]
-    def post(self, request):
-        serializer = ResendCodeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        username = serializer.validated_data['username']
-        try:
-          user = CustomUser.objects.get(username=username)
-        except CustomUser.DoesNotExist:
-          raise NotFound('Пользователь не существует.')
-        user.generate_code()
-        user.save()
-        send_activation_email(user, request)
-        return Response({'message': 'Новый код отправлен на почту'},
-                        status=status.HTTP_200_OK)
+
+"""class MeViewSet(APIView):
+    permission_classes = [IsAuthenticated]
+    """

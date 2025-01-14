@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
+from users.models import CustomUser
 
 
 def send_activation_email(user, request):
@@ -24,3 +25,4 @@ class NotMeValidator:
                         raise serializers.ValidationError(
                                 'Нельзя использовать "me" '
                                 'в качестве "username"')
+  
