@@ -10,7 +10,8 @@ from api.serializers import (
     CommentSerializer,
     SignUpSerializer,
     TokenSerializer,
-    ProfileSerializer
+    ProfileSerializer,
+    ForAdminSerializer
 )
 from reviews.models import Category, Genre, Title, Review
 from api.utils import send_activation_email
@@ -209,14 +210,11 @@ class TokenView(APIView):
 class UsersViewSet(ModelViewSet):
     queryset = CustomUser.objects.all()
     permission_classes = [IsAuthenticated, IsAdminOnly]
-    serializer_class = ProfileSerializer
+    serializer_class = ForAdminSerializer
     lookup_field = 'username'
     filter_backends = (filters.SearchFilter,)
     search_fields = ('$username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
-    
-    
-    
 
     @action(methods=('GET', 'PATCH'),
             detail=False,
@@ -224,8 +222,12 @@ class UsersViewSet(ModelViewSet):
             url_path='me',
     )
     def get_user(self, request):
+        if request.user.role == 'admin':
+            serializer_class = ForAdminSerializer
+        else:
+            serializer_class = ProfileSerializer
         if request.method == 'PATCH':
-            serializer = self.serializer_class(
+            serializer = serializer_class(
                 request.user,
                 data=request.data,
                 partial=True
