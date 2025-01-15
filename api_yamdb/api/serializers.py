@@ -215,25 +215,26 @@ class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для модели отзыва."""
 
     author = SlugRelatedField(read_only=True, slug_field='username')
-    title = TitleReadSerializer(read_only=True)
 
     class Meta:
         model = Review
-        fields = ('id', 'text', 'score', 'author', 'pub_date', 'title')
+        fields = ('id', 'text', 'score', 'author', 'pub_date')
         read_only_fields = ('id', 'author', 'pub_date')
+
+    def validate_score(self, value):
+        if value is None:
+            raise serializers.ValidationError('Поле "score" обязательно для заполнения.')
+        if not (1 <= value <= 10):
+            raise serializers.ValidationError('Оценка должна быть в диапазоне от 1 до 10.')
+        return value
 
     def validate(self, data):
         request = self.context.get('request')
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(
-                title_id=title_id,
-                author=author,
-            ).exists():
-                raise ValidationError(
-                    'Вы уже оставили отзыв для ' 'этого произведения.'
-                )
+            if Review.objects.filter(title_id=title_id, author=author).exists():
+                raise ValidationError('Вы уже оставили отзыв для этого произведения.')
         return data
 
     def create(self, validated_data):
@@ -248,9 +249,8 @@ class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для модели комментария."""
 
     author = SlugRelatedField(read_only=True, slug_field='username')
-    review = ReviewSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = '__all__'
-        read_only_fields = ('id', 'author', 'review', 'pub_date')
+        fields = ('id', 'text', 'author', 'pub_date')
+        read_only_fields = ('id', 'author', 'pub_date')
