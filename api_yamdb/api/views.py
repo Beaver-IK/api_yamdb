@@ -136,7 +136,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления отзывами."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+        IsAuthorOrModeratorOrAdmin,
+    ]
     http_method_names = ['get', 'post', 'patch', 'delete']
     queryset = Review.objects.all()
 
@@ -157,7 +160,10 @@ class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления комментариями."""
 
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
+    permission_classes = [
+        IsAuthenticatedOrReadOnly,
+        IsAuthorOrModeratorOrAdmin,
+    ]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_review(self):
@@ -187,14 +193,20 @@ class SignUpView(APIView):
             user.save()
             send_activation_email(user, request)
         except CustomUser.DoesNotExist:
-            if CustomUser.exists(email=email) or CustomUser.exists(username=username):
+            if CustomUser.exists(email=email) or CustomUser.exists(
+                username=username,
+            ):
                 return Response(status=status.HTTP_400_BAD_REQUEST)
-            user = CustomUser.objects.create_user(username=username, email=email)
+            user = CustomUser.objects.create_user(
+                username=username,
+                email=email,
+            )
             user.generate_code()
             user.save()
             send_activation_email(user, request)
         return Response(
-            dict(email=user.email, username=user.username), status=status.HTTP_200_OK
+            dict(email=user.email, username=user.username),
+            status=status.HTTP_200_OK,
         )
 
 
@@ -250,7 +262,11 @@ class UsersViewSet(ModelViewSet):
         else:
             serializer_class = ProfileSerializer
         if request.method == 'PATCH':
-            serializer = serializer_class(request.user, data=request.data, partial=True)
+            serializer = serializer_class(
+                request.user,
+                data=request.data,
+                partial=True,
+            )
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)

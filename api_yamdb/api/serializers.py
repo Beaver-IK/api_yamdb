@@ -186,7 +186,14 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
         read_only_fields = ('role',)
 
 
@@ -194,7 +201,14 @@ class ForAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+        fields = (
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
+        )
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -213,13 +227,20 @@ class ReviewSerializer(serializers.ModelSerializer):
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(title_id=title_id, author=author).exists():
-                raise ValidationError('Вы уже оставили отзыв для этого произведения.')
+            if Review.objects.filter(
+                title_id=title_id,
+                author=author,
+            ).exists():
+                raise ValidationError(
+                    'Вы уже оставили отзыв для ' 'этого произведения.'
+                )
         return data
 
     def create(self, validated_data):
         validated_data['author'] = self.context['request'].user
-        validated_data['title_id'] = self.context['view'].kwargs.get('title_id')
+        validated_data['title_id'] = self.context['view'].kwargs.get(
+            'title_id',
+        )
         return Review.objects.create(**validated_data)
 
 
