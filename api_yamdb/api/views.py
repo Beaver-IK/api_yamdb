@@ -10,7 +10,8 @@ from api.serializers import (
     CommentSerializer,
     SignUpSerializer,
     TokenSerializer,
-    ProfileSerializer
+    ProfileSerializer,
+    ForAdminSerializer
 )
 from reviews.models import Category, Genre, Title, Review
 from api.utils import send_activation_email
@@ -25,6 +26,7 @@ from rest_framework.exceptions import ValidationError, NotFound, bad_request
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.decorators import action
 from datetime import timezone, datetime
 
 
@@ -208,13 +210,30 @@ class TokenView(APIView):
 class UsersViewSet(ModelViewSet):
     queryset = CustomUser.objects.all()
     permission_classes = [IsAuthenticated, IsAdminOnly]
-    serializer_class = ProfileSerializer
+    serializer_class = ForAdminSerializer
     lookup_field = 'username'
     filter_backends = (filters.SearchFilter,)
     search_fields = ('$username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-
-"""class MeViewSet(APIView):
-    permission_classes = [IsAuthenticated]
-    """
+    @action(methods=('GET', 'PATCH'),
+            detail=False,
+            permission_classes=[IsAuthenticated],
+            url_path='me',
+    )
+    def get_user(self, request):
+        if request.user.role == 'admin':
+            serializer_class = ForAdminSerializer
+        else:
+            serializer_class = ProfileSerializer
+        if request.method == 'PATCH':
+            serializer = serializer_class(
+                request.user,
+                data=request.data,
+                partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        serializer = self.serializer_class(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)

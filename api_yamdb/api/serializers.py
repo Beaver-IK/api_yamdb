@@ -152,7 +152,19 @@ class TokenSerializer(BaseAuthSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
+    
+    # role = role = serializers.CharField(read_only=True)
 
+    class Meta:
+        model = CustomUser
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+        )
+        read_only_fields = ('role',)
+
+
+class ForAdminSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = CustomUser
         fields = (
