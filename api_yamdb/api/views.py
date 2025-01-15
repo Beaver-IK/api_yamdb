@@ -116,14 +116,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly,
                           IsAuthorOrModeratorOrAdmin]
     http_method_names = ['get', 'post', 'patch', 'delete']
-    queryset = Review.objects.all()
+    queryset = Review.objects.all().order_by('-pub_date')
 
     def get_title(self):
         return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
 
     def get_queryset(self):
         title_id = self.kwargs.get('title_id')
-        return Review.objects.filter(title_id=title_id)
+        return Review.objects.filter(title_id=title_id).order_by('-pub_date')
 
     def perform_create(self, serializer):
         title = self.get_title()
@@ -143,7 +143,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return get_object_or_404(Review, pk=self.kwargs.get('review_id'))
 
     def get_queryset(self):
-        return self.get_review().comments.all()
+        return self.get_review().comments.all().order_by('-pub_date')
 
     def perform_create(self, serializer):
         serializer.save(review=self.get_review(), author=self.request.user)
@@ -169,8 +169,9 @@ class SignUpView(APIView):
                 CustomUser.exists(username=username)):
                 return Response(status=status.HTTP_400_BAD_REQUEST)
             user = CustomUser.objects.create_user(username=username, email=email)
-            user.generate_code()
-            user.save()
+            if not user.activation_code:
+                user.generate_code()
+                user.save()
             send_activation_email(user, request)
         return Response(dict(
             email=user.email,
@@ -201,20 +202,21 @@ class TokenView(APIView):
                 'message': 'Неверный код иди срок действия кода истек.'
                 }, status=status.HTTP_400_BAD_REQUEST)
         user.is_active = True
-        user.clear_code()
+        # user.clear_code()
         user.save()
         token = generate_jwt_token(user)
         return Response({'token': token}, status=status.HTTP_200_OK)
 
 
 class UsersViewSet(ModelViewSet):
-    queryset = CustomUser.objects.all()
+    queryset = CustomUser.objects.all().order_by('username')
     permission_classes = [IsAuthenticated, IsAdminOnly]
     serializer_class = ForAdminSerializer
     lookup_field = 'username'
     filter_backends = (filters.SearchFilter,)
     search_fields = ('$username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
+    
 
     @action(methods=('GET', 'PATCH'),
             detail=False,
