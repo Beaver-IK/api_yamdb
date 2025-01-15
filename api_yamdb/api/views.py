@@ -11,7 +11,7 @@ from api.serializers import (
     SignUpSerializer,
     TokenSerializer,
     ProfileSerializer,
-    ForAdminSerializer
+    ForAdminSerializer,
 )
 from reviews.models import Category, Genre, Title, Review
 from api.utils import send_activation_email
@@ -102,19 +102,41 @@ class TitleViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(name__icontains=name)
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        write_serializer = TitleListCreateSerializer(
+            data=request.data, context=self.get_serializer_context()
+        )
+        write_serializer.is_valid(raise_exception=True)
+        title = write_serializer.save()
+        read_serializer = TitleReadSerializer(
+            title, context=self.get_serializer_context()
+        )
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
     def update(self, request, *args, **kwargs):
-        """Переопределяем update, запретить PUT-запросы, разрешить PATCH."""
         if request.method == 'PUT':
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        return super().update(request, *args, **kwargs)
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        write_serializer = TitleListCreateSerializer(
+            instance,
+            data=request.data,
+            partial=partial,
+            context=self.get_serializer_context(),
+        )
+        write_serializer.is_valid(raise_exception=True)
+        self.perform_update(write_serializer)
+        read_serializer = TitleReadSerializer(
+            instance, context=self.get_serializer_context()
+        )
+        return Response(read_serializer.data, status=status.HTTP_200_OK)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления отзывами."""
 
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly,
-                          IsAuthorOrModeratorOrAdmin]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
     http_method_names = ['get', 'post', 'patch', 'delete']
     queryset = Review.objects.all()
 
@@ -135,8 +157,7 @@ class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления комментариями."""
 
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly,
-                          IsAuthorOrModeratorOrAdmin]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrModeratorOrAdmin]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_review(self):
@@ -154,6 +175,7 @@ class SignUpView(APIView):
 
     permission_classes = [AllowAny]
     http_method_names = ['post']
+
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -165,17 +187,14 @@ class SignUpView(APIView):
             user.save()
             send_activation_email(user, request)
         except CustomUser.DoesNotExist:
-            if (CustomUser.exists(email=email) or 
-                CustomUser.exists(username=username)):
+            if CustomUser.exists(email=email) or CustomUser.exists(username=username):
                 return Response(status=status.HTTP_400_BAD_REQUEST)
             user = CustomUser.objects.create_user(username=username, email=email)
             user.generate_code()
             user.save()
             send_activation_email(user, request)
-        return Response(dict(
-            email=user.email,
-            username=user.username
-            ), status=status.HTTP_200_OK
+        return Response(
+            dict(email=user.email, username=user.username), status=status.HTTP_200_OK
         )
 
 
@@ -184,6 +203,7 @@ class TokenView(APIView):
 
     permission_classes = [AllowAny]
     http_method_names = ['post']
+
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -193,13 +213,15 @@ class TokenView(APIView):
             user = CustomUser.objects.get(username=username)
         except CustomUser.DoesNotExist:
             raise NotFound('Неверный код активации или имя пользователя')
-        if (not user.validity_code or 
-            datetime.now(timezone.utc) > user.validity_code or
-            code != user.activation_code
+        if (
+            not user.validity_code
+            or datetime.now(timezone.utc) > user.validity_code
+            or code != user.activation_code
         ):
-            return Response({
-                'message': 'Неверный код иди срок действия кода истек.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'message': 'Неверный код иди срок действия кода истек.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         user.is_active = True
         user.clear_code()
         user.save()
@@ -216,10 +238,11 @@ class UsersViewSet(ModelViewSet):
     search_fields = ('$username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
 
-    @action(methods=('GET', 'PATCH'),
-            detail=False,
-            permission_classes=[IsAuthenticated],
-            url_path='me',
+    @action(
+        methods=('GET', 'PATCH'),
+        detail=False,
+        permission_classes=[IsAuthenticated],
+        url_path='me',
     )
     def get_user(self, request):
         if request.user.role == 'admin':
@@ -227,11 +250,7 @@ class UsersViewSet(ModelViewSet):
         else:
             serializer_class = ProfileSerializer
         if request.method == 'PATCH':
-            serializer = serializer_class(
-                request.user,
-                data=request.data,
-                partial=True
-            )
+            serializer = serializer_class(request.user, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
