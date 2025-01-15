@@ -49,15 +49,16 @@ class Title(models.Model):
         related_name='title_reviews',
         blank=True
     )
-    rating = models.FloatField(null=True, default=None)
+    rating = models.IntegerField(null=True, default=None)
 
     def update_average_rating(self):
         """Обновляет средний рейтинг произведения."""
-        average = self.reviews.aggregate(models.Avg('score'))['score__avg']
+        average = Review.objects.filter(title=self).aggregate(
+            models.Avg('score'))['score__avg']
         if average is None:
             self.rating = None
         else:
-            self.rating = round(average, 1)
+            self.rating = round(average)
         self.save(update_fields=['rating'])
 
     class Meta:
