@@ -1,3 +1,15 @@
+from django.shortcuts import get_object_or_404
+from rest_framework import filters, status, mixins, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import (
+    IsAuthenticatedOrReadOnly,
+    IsAuthenticated,
+    AllowAny,
+)
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.views import APIView
+
 from api.permissions import IsAdminOrReadOnly, IsAuthorOrModeratorOrAdmin, IsAdminOnly
 from api.serializers import (
     CategoryListCreateSerializer,
@@ -13,21 +25,12 @@ from api.serializers import (
     ProfileSerializer,
     ForAdminSerializer,
 )
-from reviews.models import Category, Genre, Title, Review
 from api.utils import send_activation_email
-from users.models import CustomUser
-from users.authentication import generate_jwt_token
 
-from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, mixins, viewsets
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
-from rest_framework.exceptions import ValidationError, NotFound, bad_request
-from rest_framework.permissions import AllowAny
-from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import action
-from datetime import timezone, datetime
+from reviews.models import Category, Genre, Title, Review
+
+from users.authentication import generate_jwt_token
+from users.models import CustomUser
 
 
 class CategoryViewSet(
@@ -41,7 +44,6 @@ class CategoryViewSet(
     queryset = Category.objects.all().order_by('name')
     lookup_field = 'slug'
     permission_classes = [IsAdminOrReadOnly]
-
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
@@ -62,7 +64,6 @@ class GenreViewSet(
     queryset = Genre.objects.order_by('name')
     lookup_field = 'slug'
     permission_classes = [IsAdminOrReadOnly]
-
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
@@ -85,33 +86,47 @@ class TitleViewSet(viewsets.ModelViewSet):
             return TitleReadSerializer
         return TitleListCreateSerializer
 
+    def build_filter_kwargs(self):
+        """Формирует словарь фильтров по переданным параметрам."""
+        param_map = {
+            'category': 'category__slug',
+            'genre': 'genre__slug',
+            'year': 'year',
+            'name': 'name__icontains',
+        }
+        filters_dict = {}
+        for query_param, filter_field in param_map.items():
+            value = self.request.query_params.get(query_param)
+            if value:
+                filters_dict[filter_field] = value
+        return filters_dict
+
     def get_queryset(self):
-        """Фильтрует произведения по категории, жанру и году."""
         queryset = super().get_queryset()
-        category = self.request.query_params.get('category')
-        genre = self.request.query_params.get('genre')
-        year = self.request.query_params.get('year')
-        name = self.request.query_params.get('name')
-        if category:
-            queryset = queryset.filter(category__slug=category)
-        if genre:
-            queryset = queryset.filter(genre__slug=genre)
-        if year:
-            queryset = queryset.filter(year=year)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
+        filters_dict = self.build_filter_kwargs()
+        if filters_dict:
+            queryset = queryset.filter(**filters_dict)
         return queryset
+
+    def perform_create(self, serializer):
+        return serializer.save()
+
+    def perform_update(self, serializer):
+        return serializer.save()
+
+    def perform_response(self, instance, status_code):
+        read_serializer = TitleReadSerializer(
+            instance, context=self.get_serializer_context()
+        )
+        return Response(read_serializer.data, status=status_code)
 
     def create(self, request, *args, **kwargs):
         write_serializer = TitleListCreateSerializer(
             data=request.data, context=self.get_serializer_context()
         )
         write_serializer.is_valid(raise_exception=True)
-        title = write_serializer.save()
-        read_serializer = TitleReadSerializer(
-            title, context=self.get_serializer_context()
-        )
-        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+        instance = self.perform_create(write_serializer)
+        return self.perform_response(instance, status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
@@ -125,11 +140,8 @@ class TitleViewSet(viewsets.ModelViewSet):
             context=self.get_serializer_context(),
         )
         write_serializer.is_valid(raise_exception=True)
-        self.perform_update(write_serializer)
-        read_serializer = TitleReadSerializer(
-            instance, context=self.get_serializer_context()
-        )
-        return Response(read_serializer.data, status=status.HTTP_200_OK)
+        instance = self.perform_update(write_serializer)
+        return self.perform_response(instance, status.HTTP_200_OK)
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
@@ -222,6 +234,7 @@ class TokenView(APIView):
 
 class UsersViewSet(ModelViewSet):
     """Вьюсет для управления пользователей."""
+
     queryset = CustomUser.objects.all().order_by('username')
     permission_classes = [IsAuthenticated, IsAdminOnly]
     serializer_class = ForAdminSerializer
@@ -229,7 +242,6 @@ class UsersViewSet(ModelViewSet):
     filter_backends = (filters.SearchFilter,)
     search_fields = ('$username',)
     http_method_names = ['get', 'post', 'patch', 'delete']
-    
 
     @action(
         methods=('GET', 'PATCH'),
