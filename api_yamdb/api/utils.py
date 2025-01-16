@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.core.mail import send_mail
 from django.utils.deconstruct import deconstructible
-from rest_framework import serializers
+from rest_framework.serializers import ValidationError
 from users.models import CustomUser
 
 
@@ -22,7 +22,13 @@ class NotMeValidator:
         """Валидатор для поля username."""
         def __call__(self, value):
                 if value.lower() == 'me':
-                        raise serializers.ValidationError(
+                        raise ValidationError(
                                 'Нельзя использовать "me" '
                                 'в качестве "username"')
+
+def already_use(data):
+        already_use = CustomUser.already_use(data)
+        if already_use:
+            raise ValidationError(already_use)
+        return data
   
