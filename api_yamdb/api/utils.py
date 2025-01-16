@@ -1,8 +1,10 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.utils.deconstruct import deconstructible
 from rest_framework.serializers import ValidationError
-from users.models import CustomUser
+
+User = get_user_model()
 
 
 def send_activation_email(user, request):
@@ -26,9 +28,9 @@ class NotMeValidator:
                                 'Нельзя использовать "me" '
                                 'в качестве "username"')
 
+
 def already_use(data):
-        already_use = CustomUser.already_use(data)
+        already_use = User.already_use(data)
         if already_use:
             raise ValidationError(already_use)
         return data
-  
