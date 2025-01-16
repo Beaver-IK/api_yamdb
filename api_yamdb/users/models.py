@@ -69,7 +69,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         choices=ROLE_CHOICES,
         default='user'
     )
-    activation_code = models.CharField(max_length=36, blank=True, null=True)
+    confirmation_code = models.CharField(max_length=36, blank=True, null=True)
     validity_code = models.DateTimeField(
         blank=True,
         null=True
@@ -94,11 +94,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     
     def generate_code(self):
            import uuid
-           self.activation_code = str(uuid.uuid4())
+           self.confirmation_code = str(uuid.uuid4())
            self.validity_code = datetime.now(timezone.utc) + timedelta(hours=24)
 
     def clear_code(self):
-          self.activation_code = None
+          self.confirmation_code = None
           self.validity_code = None
 
     @classmethod

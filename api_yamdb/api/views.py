@@ -11,29 +11,10 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 
-from api.permissions import (
-    IsAdminOrReadOnly,
-    IsAuthorOrModeratorOrAdmin,
-    IsAdminOnly
-)
-from api.serializers import (
-    CategoryListCreateSerializer,
-    CategorySerializer,
-    GenreListCreateSerializer,
-    GenreSerializer,
-    TitleReadSerializer,
-    TitleListCreateSerializer,
-    ReviewSerializer,
-    CommentSerializer,
-    SignUpSerializer,
-    TokenSerializer,
-    ProfileSerializer,
-    ForAdminSerializer,
-)
+from api import permissions as pms
+from api import serializers as sz
 from api.utils import send_activation_email
-
 from reviews.models import Category, Genre, Title, Review
-
 from users.authentication import generate_jwt_token
 
 User = get_user_model()
@@ -49,14 +30,14 @@ class CategoryViewSet(
 
     queryset = Category.objects.all().order_by('name')
     lookup_field = 'slug'
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [pms.IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
     def get_serializer_class(self):
         if self.action in ['list', 'create']:
-            return CategoryListCreateSerializer
-        return CategorySerializer
+            return sz.CategoryListCreateSerializer
+        return sz.CategorySerializer
 
 
 class GenreViewSet(
@@ -69,28 +50,28 @@ class GenreViewSet(
 
     queryset = Genre.objects.order_by('name')
     lookup_field = 'slug'
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [pms.IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
     def get_serializer_class(self):
         if self.action in ['list', 'create']:
-            return GenreListCreateSerializer
-        return GenreSerializer
+            return sz.GenreListCreateSerializer
+        return sz.GenreSerializer
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления произведениями."""
 
     queryset = Title.objects.all().order_by('name')
-    permission_classes = [IsAdminOrReadOnly]
+    permission_classes = [pms.IsAdminOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
-            return TitleReadSerializer
-        return TitleListCreateSerializer
+            return sz.TitleReadSerializer
+        return sz.TitleListCreateSerializer
 
     def build_filter_kwargs(self):
         """Формирует словарь фильтров по переданным параметрам."""
@@ -121,13 +102,13 @@ class TitleViewSet(viewsets.ModelViewSet):
         return serializer.save()
 
     def perform_response(self, instance, status_code):
-        read_serializer = TitleReadSerializer(
+        read_serializer = sz.TitleReadSerializer(
             instance, context=self.get_serializer_context()
         )
         return Response(read_serializer.data, status=status_code)
 
     def create(self, request, *args, **kwargs):
-        write_serializer = TitleListCreateSerializer(
+        write_serializer = sz.TitleListCreateSerializer(
             data=request.data, context=self.get_serializer_context()
         )
         write_serializer.is_valid(raise_exception=True)
@@ -139,7 +120,7 @@ class TitleViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
-        write_serializer = TitleListCreateSerializer(
+        write_serializer = sz.TitleListCreateSerializer(
             instance,
             data=request.data,
             partial=partial,
@@ -153,10 +134,10 @@ class TitleViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления отзывами."""
 
-    serializer_class = ReviewSerializer
+    serializer_class = sz.ReviewSerializer
     permission_classes = [
         IsAuthenticatedOrReadOnly,
-        IsAuthorOrModeratorOrAdmin,
+        pms.IsAuthorOrModeratorOrAdmin,
     ]
     http_method_names = ['get', 'post', 'patch', 'delete']
     queryset = Review.objects.all().order_by('-pub_date')
@@ -177,10 +158,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления комментариями."""
 
-    serializer_class = CommentSerializer
+    serializer_class = sz.CommentSerializer
     permission_classes = [
         IsAuthenticatedOrReadOnly,
-        IsAuthorOrModeratorOrAdmin,
+        pms.IsAuthorOrModeratorOrAdmin,
     ]
     http_method_names = ['get', 'post', 'patch', 'delete']
 
@@ -205,7 +186,7 @@ class SignUpView(APIView):
     http_method_names = ['post']
 
     def post(self, request):
-        serializer = SignUpSerializer(data=request.data)
+        serializer = sz.SignUpSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
@@ -232,7 +213,7 @@ class TokenView(APIView):
     http_method_names = ['post']
 
     def post(self, request):
-        serializer = TokenSerializer(data=request.data)
+        serializer = sz.TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         user = User.objects.get(username=username)
@@ -246,8 +227,8 @@ class UsersViewSet(ModelViewSet):
     """Вьюсет для управления пользователей."""
 
     queryset = User.objects.all().order_by('username')
-    permission_classes = [IsAuthenticated, IsAdminOnly]
-    serializer_class = ForAdminSerializer
+    permission_classes = [IsAuthenticated, pms.IsAdminOnly]
+    serializer_class = sz.ForAdminSerializer
     lookup_field = 'username'
     filter_backends = (filters.SearchFilter,)
     search_fields = ('$username',)
@@ -261,9 +242,9 @@ class UsersViewSet(ModelViewSet):
     )
     def get_user(self, request):
         if request.user.role == 'admin':
-            serializer_class = ForAdminSerializer
+            serializer_class = sz.ForAdminSerializer
         else:
-            serializer_class = ProfileSerializer
+            serializer_class = sz.ProfileSerializer
         if request.method == 'PATCH':
             serializer = serializer_class(
                 request.user,

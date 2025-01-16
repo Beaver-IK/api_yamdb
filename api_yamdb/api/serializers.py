@@ -6,7 +6,8 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.relations import SlugRelatedField
 
-from api.utils import NotMeValidator, already_use
+from api import utils
+from api.validators import NotMeValidator
 from reviews.models import Category, Genre, Title, Comment, Review
 from users.models import MAX_LENGTH, EMAIL_LENGTH, MESSAGE
 
@@ -158,11 +159,11 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
 
     def validate_genre(self, value):
         """Проверяет, что список жанров не пуст."""
-        return validate_not_empty(value, 'жанров')
+        return utils.validate_not_empty(value, 'жанров')
 
     def validate_year(self, value):
         """Проверяет, что год произведения не превышает текущий."""
-        return validate_year_not_exceed_current(value)
+        return utils.validate_year_not_exceed_current(value)
 
     def create(self, validated_data):
         """Создаёт произведение и устанавливает жанры."""
@@ -174,7 +175,7 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """Обновляет произведение и жанры при необходимости."""
         genres = validated_data.pop('genre', None)
-        instance = update_instance_fields(instance, validated_data)
+        instance = utils.update_instance_fields(instance, validated_data)
         if genres is not None:
             instance.genre.set(genres)
         return instance
@@ -218,7 +219,7 @@ class SignUpSerializer(BaseAuthSerializer):
     email = serializers.EmailField(max_length=EMAIL_LENGTH)
 
     def validate(self, attrs):
-        return already_use(attrs)
+        return utils.already_use(attrs)
 
 
 class TokenSerializer(BaseAuthSerializer):
@@ -234,7 +235,7 @@ class TokenSerializer(BaseAuthSerializer):
             raise NotFound(dict(username='Пользователь не существует'))
         except KeyError as e:
             raise ValidationError(e)
-        if user.activation_code != confirmation_code:
+        if user.confirmation_code != confirmation_code:
             raise ValidationError(
                 dict(confirmation_code='Неверный код подтверждения')
             )
@@ -262,7 +263,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('role',)
 
     def validate(self, attrs):
-        return already_use(attrs)
+        return utils.already_use(attrs)
 
 
 class ForAdminSerializer(serializers.ModelSerializer):
@@ -281,7 +282,7 @@ class ForAdminSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        return already_use(attrs)
+        return utils.already_use(attrs)
 
 
 # ==============================
