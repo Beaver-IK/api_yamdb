@@ -185,18 +185,7 @@ class TokenView(APIView):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
-        code = serializer.validated_data['confirmation_code']
-        try:
-            user = CustomUser.objects.get(username=username)
-        except CustomUser.DoesNotExist:
-            raise NotFound('Неверный код активации или имя пользователя')
-        if (not user.validity_code or 
-            datetime.now(timezone.utc) > user.validity_code or
-            code != user.activation_code
-        ):
-            return Response({
-                'message': 'Неверный код или срок действия кода истек.'
-                }, status=status.HTTP_400_BAD_REQUEST)
+        user = CustomUser.objects.get(username=username)
         user.is_active = True
         user.save()
         token = generate_jwt_token(user)

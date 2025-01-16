@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 from rest_framework.relations import SlugRelatedField
 from rest_framework.validators import UniqueValidator
 from django.core.validators import RegexValidator
@@ -155,26 +156,54 @@ class TokenSerializer(BaseAuthSerializer):
 
     confirmation_code = serializers.CharField(max_length=36)
 
+    def validate(self, attrs):
+        try:
+            user = CustomUser.objects.get(username=attrs['username'])
+            confirmation_code = attrs['confirmation_code']
+        except CustomUser.DoesNotExist:
+            raise NotFound(dict(
+                username='Пользователь не существует'
+                )
+            )
+        except KeyError as e:
+            raise ValidationError(e)
+        if user.activation_code != confirmation_code:
+            raise ValidationError(dict(
+                confirmation_code='Неверный код подтверждения'
+                )
+            )
+        return attrs
 
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
-    
-    # role = role = serializers.CharField(read_only=True)
 
     class Meta:
         model = CustomUser
         fields = (
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
         )
         read_only_fields = ('role',)
 
 
 class ForAdminSerializer(serializers.ModelSerializer):
     
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
+    
     class Meta:
         model = CustomUser
         fields = (
-            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+            'username',
+            'email',
+            'first_name',
+            'last_name',
+            'bio',
+            'role',
         )
 
 
