@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from django.core.exceptions import ValidationError as DjangoValidationError
+from django.contrib.auth import get_user_model
 from django.core.validators import RegexValidator
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
@@ -8,8 +8,9 @@ from rest_framework.relations import SlugRelatedField
 
 from api.utils import NotMeValidator, already_use
 from reviews.models import Category, Genre, Title, Comment, Review
-from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
+from users.models import MAX_LENGTH, EMAIL_LENGTH, MESSAGE
 
+User = get_user_model()
 
 # =====================================
 # Константы для повторяющихся полей
@@ -227,14 +228,16 @@ class TokenSerializer(BaseAuthSerializer):
 
     def validate(self, attrs):
         try:
-            user = CustomUser.objects.get(username=attrs['username'])
+            user = User.objects.get(username=attrs['username'])
             confirmation_code = attrs['confirmation_code']
-        except CustomUser.DoesNotExist:
+        except User.DoesNotExist:
             raise NotFound(dict(username='Пользователь не существует'))
         except KeyError as e:
             raise ValidationError(e)
         if user.activation_code != confirmation_code:
-            raise ValidationError(dict(confirmation_code='Неверный код подтверждения'))
+            raise ValidationError(
+                dict(confirmation_code='Неверный код подтверждения')
+            )
         return attrs
 
 
@@ -247,7 +250,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     username = USERNAME_FIELD
 
     class Meta:
-        model = CustomUser
+        model = User
         fields = (
             'username',
             'email',
@@ -267,7 +270,7 @@ class ForAdminSerializer(serializers.ModelSerializer):
     username = USERNAME_FIELD
 
     class Meta:
-        model = CustomUser
+        model = User
         fields = (
             'username',
             'email',
@@ -292,13 +295,9 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'score', 'author', 'pub_date')
-        read_only_fields = ('id', 'author', 'pub_date')
+        read_only_fields = READ_ONLY_ID_AUTHOR_PUB_DATE
 
     def validate_score(self, value):
-        if value is None:
-            raise serializers.ValidationError(
-                'Поле "score" обязательно для заполнения.'
-            )
         if not (1 <= value <= 10):
             raise serializers.ValidationError(
                 'Оценка должна быть в диапазоне от 1 до 10.'
@@ -310,8 +309,17 @@ class ReviewSerializer(serializers.ModelSerializer):
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(title_id=title_id, author=author).exists():
-                raise ValidationError('Вы уже оставили отзыв для этого произведения.')
+            if Review.objects.filter(
+                title_id=title_id,
+                author=author
+            ).exists():
+                raise serializers.ValidationError(
+                    'Вы уже оставили отзыв для этого произведения.'
+                )
+            if 'score' not in data:
+                raise serializers.ValidationError(
+                    {'score': 'Поле "score" обязательно для заполнения.'}
+                )
         return data
 
     def create(self, validated_data):
@@ -330,4 +338,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        read_only_fields = ('id', 'author', 'pub_date')
+        read_only_fields = READ_ONLY_ID_AUTHOR_PUB_DATE

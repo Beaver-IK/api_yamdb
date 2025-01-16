@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, mixins, viewsets
 from rest_framework.decorators import action
@@ -10,7 +11,11 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
 
-from api.permissions import IsAdminOrReadOnly, IsAuthorOrModeratorOrAdmin, IsAdminOnly
+from api.permissions import (
+    IsAdminOrReadOnly,
+    IsAuthorOrModeratorOrAdmin,
+    IsAdminOnly
+)
 from api.serializers import (
     CategoryListCreateSerializer,
     CategorySerializer,
@@ -30,7 +35,8 @@ from api.utils import send_activation_email
 from reviews.models import Category, Genre, Title, Review
 
 from users.authentication import generate_jwt_token
-from users.models import CustomUser
+
+User = get_user_model()
 
 
 class CategoryViewSet(
@@ -179,7 +185,11 @@ class CommentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_review(self):
-        return get_object_or_404(Review, pk=self.kwargs.get('review_id'))
+        return get_object_or_404(
+            Review,
+            pk=self.kwargs.get('review_id'),
+            title__id=self.kwargs.get('title_id'),
+        )
 
     def get_queryset(self):
         return self.get_review().comments.all().order_by('-pub_date')
@@ -200,12 +210,12 @@ class SignUpView(APIView):
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
         try:
-            user = CustomUser.objects.get(email=email, username=username)
+            user = User.objects.get(email=email, username=username)
             user.generate_code()
             user.save()
             send_activation_email(user, request)
-        except CustomUser.DoesNotExist:
-            user = CustomUser.objects.create_user(username=username, email=email)
+        except User.DoesNotExist:
+            user = User.objects.create_user(username=username, email=email)
             user.generate_code()
             user.save()
             send_activation_email(user, request)
@@ -225,7 +235,7 @@ class TokenView(APIView):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
-        user = CustomUser.objects.get(username=username)
+        user = User.objects.get(username=username)
         user.is_active = True
         user.save()
         token = generate_jwt_token(user)
@@ -235,7 +245,7 @@ class TokenView(APIView):
 class UsersViewSet(ModelViewSet):
     """Вьюсет для управления пользователей."""
 
-    queryset = CustomUser.objects.all().order_by('username')
+    queryset = User.objects.all().order_by('username')
     permission_classes = [IsAuthenticated, IsAdminOnly]
     serializer_class = ForAdminSerializer
     lookup_field = 'username'
