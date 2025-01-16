@@ -6,9 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timezone, datetime, timedelta
 
-MAX_LENGTH = 150
-MESSAGE = (f'Возможно использование букв, цифр и спецсимволов @,.,+,-,_')
-EMAIL_LENGTH = 254
+from users import constants as C
 
 
 class CustomUserManager(BaseUserManager):
@@ -49,20 +47,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     ]
 
     username = models.CharField(
-        max_length=MAX_LENGTH,
+        max_length=C.MAX_LENGTH_USERNAME,
         unique=True,
-        help_text=f'Максимальная длина {MAX_LENGTH} символов. {MESSAGE}',
+        help_text=f'Максимальная длина {C.MAX_LENGTH_USERNAME} символов. {C.MESSAGE}',
         validators=[
             RegexValidator(
                 regex=r'^[\w.@+-]+\Z',
-                message=MESSAGE,
+                message=C.MESSAGE,
                 code='invalid_username',   
             ),
         ],
     )
-    email = models.EmailField(max_length=EMAIL_LENGTH, unique=True)
-    first_name = models.CharField(max_length=MAX_LENGTH, blank=True)
-    last_name = models.CharField(max_length=MAX_LENGTH, blank=True)
+    email = models.EmailField(max_length=C.EMAIL_LENGTH, unique=True)
+    first_name = models.CharField(max_length=C.MAX_LENGTH_FIRST_NAME, blank=True)
+    last_name = models.CharField(max_length=C.MAX_LENGTH_LAST_NAME, blank=True)
     bio = models.TextField(blank=True)
     role = models.CharField(
         max_length=10,

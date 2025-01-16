@@ -1,75 +1,14 @@
-from datetime import datetime
-
 from django.contrib.auth import get_user_model
-from django.core.validators import RegexValidator
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.relations import SlugRelatedField
 
 from api import utils
-from api.validators import NotMeValidator
+from api import constants as CA
 from reviews.models import Category, Genre, Title, Comment, Review
-from users.models import MAX_LENGTH, EMAIL_LENGTH, MESSAGE
+from users import constants as CU
 
 User = get_user_model()
-
-# =====================================
-# Константы для повторяющихся полей
-# =====================================
-CATEGORY_GENRE_FIELDS = ('id', 'name', 'slug')
-READ_ONLY_ID = ('id',)
-TITLE_FIELDS = ('id', 'name', 'year', 'description', 'category', 'genre')
-
-# Дополнительные переменные (в сериализаторы профиля, отзывов и комментов).
-READ_ONLY_ID_AUTHOR_PUB_DATE = ('id', 'author', 'pub_date')
-USER_FIELDS = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
-
-
-# =====================================
-# Вспомогательные функции
-# =====================================
-def validate_year_not_exceed_current(value: int) -> int:
-    """Проверяет, что год не превышает текущий год."""
-    current_year = datetime.now().year
-    if value > current_year:
-        raise serializers.ValidationError(
-            'Год выпуска произведения не может '
-            f'превышать текущий год ({current_year}).'
-        )
-    return value
-
-
-def validate_not_empty(value, field_name: str = 'поле') -> None:
-    """Проверяет, что переданное значение не пустое."""
-    if not value:
-        raise serializers.ValidationError(
-            f'Список {field_name} ' 'не может быть пустым.'
-        )
-    return value
-
-
-def update_instance_fields(instance, validated_data: dict):
-    """Обновляет поля объекта на основе validated_data и сохраняет."""
-    for attr, value in validated_data.items():
-        setattr(instance, attr, value)
-    instance.save()
-    return instance
-
-
-# =====================================
-# Поле USERNAME_FIELD
-# =====================================
-USERNAME_FIELD = serializers.CharField(
-    max_length=MAX_LENGTH,
-    validators=[
-        RegexValidator(
-            regex=r'^[\w.@+-]+\Z',
-            message=MESSAGE,
-            code='invalid_username',
-        ),
-        NotMeValidator(),
-    ],
-)
 
 
 # =====================================
@@ -80,8 +19,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = CATEGORY_GENRE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = CA.CATEGORY_GENRE_FIELDS
+        read_only_fields = CA.READ_ONLY_ID
 
 
 class CategoryListCreateSerializer(serializers.ModelSerializer):
@@ -100,8 +39,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = CATEGORY_GENRE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = CA.CATEGORY_GENRE_FIELDS
+        read_only_fields = CA.READ_ONLY_ID
 
 
 class GenreListCreateSerializer(serializers.ModelSerializer):
@@ -132,8 +71,8 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = TITLE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = CA.TITLE_FIELDS
+        read_only_fields = CA.READ_ONLY_ID
 
 
 class TitleListCreateSerializer(serializers.ModelSerializer):
@@ -154,8 +93,8 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = TITLE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = CA.TITLE_FIELDS
+        read_only_fields = CA.READ_ONLY_ID
 
     def validate_genre(self, value):
         """Проверяет, что список жанров не пуст."""
@@ -195,7 +134,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (*TITLE_FIELDS, 'rating')
+        fields = (*CA.TITLE_FIELDS, 'rating')
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -210,13 +149,13 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
-    username = USERNAME_FIELD
+    username = CA.USERNAME_FIELD
 
 
 class SignUpSerializer(BaseAuthSerializer):
     """Сериализатор для авторизации."""
 
-    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+    email = serializers.EmailField(max_length=CU.EMAIL_LENGTH)
 
     def validate(self, attrs):
         return utils.already_use(attrs)
@@ -248,18 +187,11 @@ class TokenSerializer(BaseAuthSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
-    username = USERNAME_FIELD
+    username = CA.USERNAME_FIELD
 
     class Meta:
         model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role',
-        )
+        fields = CA.USER_FIELDS
         read_only_fields = ('role',)
 
     def validate(self, attrs):
@@ -267,19 +199,12 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class ForAdminSerializer(serializers.ModelSerializer):
-
-    username = USERNAME_FIELD
+    """Сериализатор модели пользователя с правами администратора."""
+    username = CA.USERNAME_FIELD
 
     class Meta:
         model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role',
-        )
+        fields = CA.USER_FIELDS
 
     def validate(self, attrs):
         return utils.already_use(attrs)
@@ -296,7 +221,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'score', 'author', 'pub_date')
-        read_only_fields = READ_ONLY_ID_AUTHOR_PUB_DATE
+        read_only_fields = CA.READ_ONLY_ID_AUTHOR_PUB_DATE
 
     def validate_score(self, value):
         if not (1 <= value <= 10):
@@ -339,4 +264,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        read_only_fields = READ_ONLY_ID_AUTHOR_PUB_DATE
+        read_only_fields = CA.READ_ONLY_ID_AUTHOR_PUB_DATE
