@@ -2,8 +2,6 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator
 
-from users.models import CustomUser
-
 User = get_user_model()
 
 
@@ -37,6 +35,7 @@ class Genre(models.Model):
 
 class Title(models.Model):
     """Модель для произведений (фильмы, книги и т.д.)."""
+
     name = models.CharField(max_length=256)
     year = models.PositiveIntegerField()
     description = models.TextField(blank=True, null=True)
@@ -47,14 +46,17 @@ class Title(models.Model):
     reviews = models.ManyToManyField(
         'Review',
         related_name='title_reviews',
-        blank=True
+        blank=True,
     )
     rating = models.IntegerField(null=True, default=None)
 
     def update_average_rating(self):
         """Обновляет средний рейтинг произведения."""
         average = Review.objects.filter(title=self).aggregate(
-            models.Avg('score'))['score__avg']
+            models.Avg(
+                'score',
+            )
+        )['score__avg']
         if average is None:
             self.rating = None
         else:
@@ -75,31 +77,29 @@ class Review(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='reviews'
+        related_name='reviews',
     )
     title = models.ForeignKey(
-        Title,
-        on_delete=models.CASCADE,
-        related_name='reviews_set'
+        Title, on_delete=models.CASCADE, related_name='reviews_set'
     )
     text = models.TextField()
     score = models.PositiveIntegerField(
         validators=[MaxValueValidator(10)],
         help_text='Оценка от 1 до 10',
         null=True,
-        blank=True
+        blank=True,
     )
     pub_date = models.DateTimeField(
         'Дата добавления',
         auto_now_add=True,
-        db_index=True
+        db_index=True,
     )
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'title'],
-                name='unique_review'
+                name='unique_review',
             )
         ]
 
@@ -117,16 +117,14 @@ class Comment(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='comments'
+        related_name='comments',
     )
     review = models.ForeignKey(
-        Review,
-        on_delete=models.CASCADE,
-        related_name='comments'
+        Review, on_delete=models.CASCADE, related_name='comments'
     )
     text = models.TextField()
     pub_date = models.DateTimeField(
         'Дата добавления',
         auto_now_add=True,
-        db_index=True
+        db_index=True,
     )

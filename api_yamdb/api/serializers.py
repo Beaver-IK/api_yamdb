@@ -1,15 +1,62 @@
 from datetime import datetime
 
-from django.core.exceptions import ValidationError
-from rest_framework import serializers
-from rest_framework.exceptions import NotFound
-from rest_framework.relations import SlugRelatedField
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
+from rest_framework import serializers
+from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.relations import SlugRelatedField
 
+from api.utils import NotMeValidator, already_use
 from reviews.models import Category, Genre, Title, Comment, Review
 from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
-from api.utils import NotMeValidator, already_use
 
+
+# =====================================
+# Константы для повторяющихся полей
+# =====================================
+CATEGORY_GENRE_FIELDS = ('id', 'name', 'slug')
+READ_ONLY_ID = ('id',)
+TITLE_FIELDS = ('id', 'name', 'year', 'description', 'category', 'genre')
+
+# Дополнительные переменные (в сериализаторы профиля, отзывов и комментов).
+READ_ONLY_ID_AUTHOR_PUB_DATE = ('id', 'author', 'pub_date')
+USER_FIELDS = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+
+
+# =====================================
+# Вспомогательные функции
+# =====================================
+def validate_year_not_exceed_current(value: int) -> int:
+    """Проверяет, что год не превышает текущий год."""
+    current_year = datetime.now().year
+    if value > current_year:
+        raise serializers.ValidationError(
+            'Год выпуска произведения не может '
+            f'превышать текущий год ({current_year}).'
+        )
+    return value
+
+
+def validate_not_empty(value, field_name: str = 'поле') -> None:
+    """Проверяет, что переданное значение не пустое."""
+    if not value:
+        raise serializers.ValidationError(
+            f'Список {field_name} ' 'не может быть пустым.'
+        )
+    return value
+
+
+def update_instance_fields(instance, validated_data: dict):
+    """Обновляет поля объекта на основе validated_data и сохраняет."""
+    for attr, value in validated_data.items():
+        setattr(instance, attr, value)
+    instance.save()
+    return instance
+
+
+# =====================================
+# Поле USERNAME_FIELD
+# =====================================
 USERNAME_FIELD = serializers.CharField(
     max_length=MAX_LENGTH,
     validators=[
@@ -23,13 +70,16 @@ USERNAME_FIELD = serializers.CharField(
 )
 
 
+# =====================================
+# Category Serializers
+# =====================================
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для модели категории."""
 
     class Meta:
         model = Category
-        fields = ('id', 'name', 'slug')
-        read_only_fields = ('id',)
+        fields = CATEGORY_GENRE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
 
 class CategoryListCreateSerializer(serializers.ModelSerializer):
@@ -40,13 +90,16 @@ class CategoryListCreateSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
+# =====================================
+# Genre Serializers
+# =====================================
 class GenreSerializer(serializers.ModelSerializer):
     """Сериализатор для модели жанра."""
 
     class Meta:
         model = Genre
-        fields = ('id', 'name', 'slug')
-        read_only_fields = ('id',)
+        fields = CATEGORY_GENRE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
 
 class GenreListCreateSerializer(serializers.ModelSerializer):
@@ -57,8 +110,11 @@ class GenreListCreateSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
+# =====================================
+# Title Serializers
+# =====================================
 class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели произведения."""
+    """Сериализатор для модели произведения (базовый)."""
 
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
@@ -74,12 +130,12 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = ('id', 'name', 'year', 'description', 'category', 'genre')
-        read_only_fields = ('id',)
+        fields = TITLE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
 
 class TitleListCreateSerializer(serializers.ModelSerializer):
-    """Сериализатор для списка и создания жанров без поля id."""
+    """Сериализатор для списка и создания произведений без поля id."""
 
     category = serializers.SlugRelatedField(
         queryset=Category.objects.all(),
@@ -92,48 +148,39 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
         slug_field='slug',
         required=True,
     )
-
     description = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Title
-        fields = ('id', 'name', 'year', 'description', 'category', 'genre')
-        read_only_fields = ('id',)
+        fields = TITLE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
     def validate_genre(self, value):
-        if not value:
-            raise serializers.ValidationError(
-                'Список жанров ' 'не может ' 'быть пустым.'
-            )
-        return value
+        """Проверяет, что список жанров не пуст."""
+        return validate_not_empty(value, 'жанров')
 
     def validate_year(self, value):
-        current_year = datetime.now().year
-        if value > current_year:
-            raise serializers.ValidationError(
-                'Год выпуска произведения не может превышать '
-                f'текущий год ({current_year}).'
-            )
-        return value
+        """Проверяет, что год произведения не превышает текущий."""
+        return validate_year_not_exceed_current(value)
 
     def create(self, validated_data):
+        """Создаёт произведение и устанавливает жанры."""
         genres = validated_data.pop('genre')
         title = Title.objects.create(**validated_data)
         title.genre.set(genres)
         return title
 
     def update(self, instance, validated_data):
+        """Обновляет произведение и жанры при необходимости."""
         genres = validated_data.pop('genre', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        instance = update_instance_fields(instance, validated_data)
         if genres is not None:
             instance.genre.set(genres)
-        instance.save()
         return instance
 
 
 class TitleReadSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели произведения с полем rating."""
+    """Сериализатор для модели произведения с полем рейтинга."""
 
     category = CategoryListCreateSerializer(read_only=True)
     genre = GenreListCreateSerializer(many=True, read_only=True)
@@ -146,15 +193,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (
-            'id',
-            'name',
-            'year',
-            'description',
-            'category',
-            'genre',
-            'rating',
-        )
+        fields = (*TITLE_FIELDS, 'rating')
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -163,6 +202,9 @@ class TitleReadSerializer(serializers.ModelSerializer):
         return representation
 
 
+# ==============================
+# Базовые сериализаторы для аутентификации и регистрации
+# ==============================
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
@@ -188,22 +230,20 @@ class TokenSerializer(BaseAuthSerializer):
             user = CustomUser.objects.get(username=attrs['username'])
             confirmation_code = attrs['confirmation_code']
         except CustomUser.DoesNotExist:
-            raise NotFound(dict(
-                username='Пользователь не существует'
-                )
-            )
+            raise NotFound(dict(username='Пользователь не существует'))
         except KeyError as e:
             raise ValidationError(e)
         if user.activation_code != confirmation_code:
-            raise ValidationError(dict(
-                confirmation_code='Неверный код подтверждения'
-                )
-            )
+            raise ValidationError(dict(confirmation_code='Неверный код подтверждения'))
         return attrs
 
+
+# ==============================
+# Сериализаторы профиля
+# ==============================
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
-    
+
     username = USERNAME_FIELD
 
     class Meta:
@@ -217,7 +257,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'role',
         )
         read_only_fields = ('role',)
-    
+
     def validate(self, attrs):
         return already_use(attrs)
 
@@ -225,7 +265,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ForAdminSerializer(serializers.ModelSerializer):
 
     username = USERNAME_FIELD
-    
+
     class Meta:
         model = CustomUser
         fields = (
@@ -236,11 +276,14 @@ class ForAdminSerializer(serializers.ModelSerializer):
             'bio',
             'role',
         )
-    
+
     def validate(self, attrs):
         return already_use(attrs)
 
 
+# ==============================
+# Review и Comment Serializers
+# ==============================
 class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для модели отзыва."""
 
@@ -253,9 +296,13 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     def validate_score(self, value):
         if value is None:
-            raise serializers.ValidationError('Поле "score" обязательно для заполнения.')
+            raise serializers.ValidationError(
+                'Поле "score" обязательно для заполнения.'
+            )
         if not (1 <= value <= 10):
-            raise serializers.ValidationError('Оценка должна быть в диапазоне от 1 до 10.')
+            raise serializers.ValidationError(
+                'Оценка должна быть в диапазоне от 1 до 10.'
+            )
         return value
 
     def validate(self, data):
