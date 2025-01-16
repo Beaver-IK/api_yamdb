@@ -165,13 +165,9 @@ class SignUpView(APIView):
             user.save()
             send_activation_email(user, request)
         except CustomUser.DoesNotExist:
-            if (CustomUser.exists(email=email) or 
-                CustomUser.exists(username=username)):
-                return Response(status=status.HTTP_400_BAD_REQUEST)
             user = CustomUser.objects.create_user(username=username, email=email)
-            if not user.activation_code:
-                user.generate_code()
-                user.save()
+            user.generate_code()
+            user.save()
             send_activation_email(user, request)
         return Response(dict(
             email=user.email,
@@ -199,16 +195,16 @@ class TokenView(APIView):
             code != user.activation_code
         ):
             return Response({
-                'message': 'Неверный код иди срок действия кода истек.'
+                'message': 'Неверный код или срок действия кода истек.'
                 }, status=status.HTTP_400_BAD_REQUEST)
         user.is_active = True
-        # user.clear_code()
         user.save()
         token = generate_jwt_token(user)
         return Response({'token': token}, status=status.HTTP_200_OK)
 
 
 class UsersViewSet(ModelViewSet):
+    """Вьюсет для управления пользователей."""
     queryset = CustomUser.objects.all().order_by('username')
     permission_classes = [IsAuthenticated, IsAdminOnly]
     serializer_class = ForAdminSerializer

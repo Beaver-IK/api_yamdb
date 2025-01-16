@@ -143,6 +143,12 @@ class SignUpSerializer(BaseAuthSerializer):
         max_length=EMAIL_LENGTH
     )
 
+    def validate(self, attrs):
+        already_use = CustomUser.already_use(attrs)
+        if already_use:
+            raise ValidationError(already_use)
+        return attrs
+
 
 class TokenSerializer(BaseAuthSerializer):
     """Сериализатор для аутентификации."""

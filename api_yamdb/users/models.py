@@ -102,5 +102,12 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
           self.validity_code = None
 
     @classmethod
-    def exists(cls, **kwargs):
-        return cls.objects.filter(**kwargs).exists()
+    def already_use(cls, kwargs):
+        username = kwargs.get('username')
+        email = kwargs.get('email')
+        errors = dict()
+        if cls.objects.filter(username=username).exclude(email=email).exists():
+            errors['username'] = f'Username {username} уже используется.'
+        if cls.objects.filter(email=email).exclude(username=username).exists():
+            errors['email'] = f'Email {email} уже используется.'
+        return errors
