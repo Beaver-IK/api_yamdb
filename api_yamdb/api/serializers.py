@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
@@ -80,10 +82,28 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
         required=True,
     )
 
+    description = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = Title
         fields = ('id', 'name', 'year', 'description', 'category', 'genre')
         read_only_fields = ('id',)
+
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Список жанров ' 'не может ' 'быть пустым.'
+            )
+        return value
+
+    def validate_year(self, value):
+        current_year = datetime.now().year
+        if value > current_year:
+            raise serializers.ValidationError(
+                'Год выпуска произведения не может превышать '
+                f'текущий год ({current_year}).'
+            )
+        return value
 
     def create(self, validated_data):
         genres = validated_data.pop('genre')
@@ -107,6 +127,11 @@ class TitleReadSerializer(serializers.ModelSerializer):
     category = CategoryListCreateSerializer(read_only=True)
     genre = GenreListCreateSerializer(many=True, read_only=True)
     rating = serializers.IntegerField(read_only=True)
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        default="",
+    )
 
     class Meta:
         model = Title
@@ -120,6 +145,12 @@ class TitleReadSerializer(serializers.ModelSerializer):
             'rating',
         )
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        if representation.get("description") is None:
+            representation["description"] = ""
+        return representation
+
 
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
@@ -130,8 +161,8 @@ class BaseAuthSerializer(serializers.Serializer):
             RegexValidator(
                 regex=r'^[\w.@+-]+\Z',
                 message=MESSAGE,
-                code='invalid_username',   
-            ), 
+                code='invalid_username',
+            ),
             NotMeValidator(),
         ],
     )
@@ -140,9 +171,7 @@ class BaseAuthSerializer(serializers.Serializer):
 class SignUpSerializer(BaseAuthSerializer):
     """Сериализатор для авторизации."""
 
-    email = serializers.EmailField(
-        max_length=EMAIL_LENGTH
-    )
+    email = serializers.EmailField(max_length=EMAIL_LENGTH)
 
     def validate(self, attrs):
         already_use = CustomUser.already_use(attrs)
@@ -191,10 +220,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class ForAdminSerializer(serializers.ModelSerializer):
-    
-    def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
-    
+
     class Meta:
         model = CustomUser
         fields = (
@@ -211,31 +237,32 @@ class ReviewSerializer(serializers.ModelSerializer):
     """Сериализатор для модели отзыва."""
 
     author = SlugRelatedField(read_only=True, slug_field='username')
-    title = TitleReadSerializer(read_only=True)
 
     class Meta:
         model = Review
-        fields = ('id', 'text', 'score', 'author', 'pub_date', 'title')
+        fields = ('id', 'text', 'score', 'author', 'pub_date')
         read_only_fields = ('id', 'author', 'pub_date')
+
+    def validate_score(self, value):
+        if value is None:
+            raise serializers.ValidationError('Поле "score" обязательно для заполнения.')
+        if not (1 <= value <= 10):
+            raise serializers.ValidationError('Оценка должна быть в диапазоне от 1 до 10.')
+        return value
 
     def validate(self, data):
         request = self.context.get('request')
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(
-                title_id=title_id,
-                author=author
-            ).exists():
-                raise ValidationError(
-                    'Вы уже оставили отзыв для этого произведения.'
-                )
+            if Review.objects.filter(title_id=title_id, author=author).exists():
+                raise ValidationError('Вы уже оставили отзыв для этого произведения.')
         return data
 
     def create(self, validated_data):
         validated_data['author'] = self.context['request'].user
         validated_data['title_id'] = self.context['view'].kwargs.get(
-            'title_id'
+            'title_id',
         )
         return Review.objects.create(**validated_data)
 
@@ -244,9 +271,8 @@ class CommentSerializer(serializers.ModelSerializer):
     """Сериализатор для модели комментария."""
 
     author = SlugRelatedField(read_only=True, slug_field='username')
-    review = ReviewSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = '__all__'
-        read_only_fields = ('id', 'author', 'review', 'pub_date')
+        fields = ('id', 'text', 'author', 'pub_date')
+        read_only_fields = ('id', 'author', 'pub_date')
