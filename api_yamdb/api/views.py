@@ -193,23 +193,9 @@ class SignUpView(APIView):
             user.save()
             send_activation_email(user, request)
         except CustomUser.DoesNotExist:
-            if CustomUser.exists(email=email) or CustomUser.exists(
-                username=username,
-            ):
-                return Response(status=status.HTTP_400_BAD_REQUEST)
-<<<<<<< HEAD
             user = CustomUser.objects.create_user(username=username, email=email)
-            if not user.activation_code:
-                user.generate_code()
-                user.save()
-=======
-            user = CustomUser.objects.create_user(
-                username=username,
-                email=email,
-            )
             user.generate_code()
             user.save()
->>>>>>> e0f3ae82510fd42b3039c8dcdce2ba9a2daf39a1
             send_activation_email(user, request)
         return Response(
             dict(email=user.email, username=user.username),
@@ -227,28 +213,15 @@ class TokenView(APIView):
         serializer = TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
-        code = serializer.validated_data['confirmation_code']
-        try:
-            user = CustomUser.objects.get(username=username)
-        except CustomUser.DoesNotExist:
-            raise NotFound('Неверный код активации или имя пользователя')
-        if (
-            not user.validity_code
-            or datetime.now(timezone.utc) > user.validity_code
-            or code != user.activation_code
-        ):
-            return Response(
-                {'message': 'Неверный код иди срок действия кода истек.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        user = CustomUser.objects.get(username=username)
         user.is_active = True
-        # user.clear_code()
         user.save()
         token = generate_jwt_token(user)
         return Response({'token': token}, status=status.HTTP_200_OK)
 
 
 class UsersViewSet(ModelViewSet):
+    """Вьюсет для управления пользователей."""
     queryset = CustomUser.objects.all().order_by('username')
     permission_classes = [IsAuthenticated, IsAdminOnly]
     serializer_class = ForAdminSerializer
