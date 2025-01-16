@@ -4,12 +4,23 @@ from django.core.exceptions import ValidationError
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.relations import SlugRelatedField
-from rest_framework.validators import UniqueValidator
 from django.core.validators import RegexValidator
 
 from reviews.models import Category, Genre, Title, Comment, Review
 from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
-from api.utils import NotMeValidator
+from api.utils import NotMeValidator, already_use
+
+USERNAME_FIELD = serializers.CharField(
+    max_length=MAX_LENGTH,
+    validators=[
+        RegexValidator(
+            regex=r'^[\w.@+-]+\Z',
+            message=MESSAGE,
+            code='invalid_username',
+        ),
+        NotMeValidator(),
+    ],
+)
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -155,17 +166,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
-    username = serializers.CharField(
-        max_length=MAX_LENGTH,
-        validators=[
-            RegexValidator(
-                regex=r'^[\w.@+-]+\Z',
-                message=MESSAGE,
-                code='invalid_username',
-            ),
-            NotMeValidator(),
-        ],
-    )
+    username = USERNAME_FIELD
 
 
 class SignUpSerializer(BaseAuthSerializer):
@@ -174,10 +175,7 @@ class SignUpSerializer(BaseAuthSerializer):
     email = serializers.EmailField(max_length=EMAIL_LENGTH)
 
     def validate(self, attrs):
-        already_use = CustomUser.already_use(attrs)
-        if already_use:
-            raise ValidationError(already_use)
-        return attrs
+        return already_use(attrs)
 
 
 class TokenSerializer(BaseAuthSerializer):
@@ -205,6 +203,8 @@ class TokenSerializer(BaseAuthSerializer):
 
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
+    
+    username = USERNAME_FIELD
 
     class Meta:
         model = CustomUser
@@ -217,10 +217,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             'role',
         )
         read_only_fields = ('role',)
+    
+    def validate(self, attrs):
+        return already_use(attrs)
 
 
 class ForAdminSerializer(serializers.ModelSerializer):
 
+    username = USERNAME_FIELD
+    
     class Meta:
         model = CustomUser
         fields = (
@@ -231,6 +236,9 @@ class ForAdminSerializer(serializers.ModelSerializer):
             'bio',
             'role',
         )
+    
+    def validate(self, attrs):
+        return already_use(attrs)
 
 
 class ReviewSerializer(serializers.ModelSerializer):
