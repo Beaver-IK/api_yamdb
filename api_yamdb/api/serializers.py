@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import RegexValidator
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.relations import SlugRelatedField
 
 from api.utils import NotMeValidator, already_use
@@ -11,16 +11,28 @@ from reviews.models import Category, Genre, Title, Comment, Review
 from users.models import CustomUser, MAX_LENGTH, EMAIL_LENGTH, MESSAGE
 
 
-# ==============================
+# =====================================
+# Константы для повторяющихся полей
+# =====================================
+CATEGORY_GENRE_FIELDS = ('id', 'name', 'slug')
+READ_ONLY_ID = ('id',)
+TITLE_FIELDS = ('id', 'name', 'year', 'description', 'category', 'genre')
+
+# Дополнительные переменные (в сериализаторы профиля, отзывов и комментов).
+READ_ONLY_ID_AUTHOR_PUB_DATE = ('id', 'author', 'pub_date')
+USER_FIELDS = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
+
+
+# =====================================
 # Вспомогательные функции
-# ==============================
+# =====================================
 def validate_year_not_exceed_current(value: int) -> int:
     """Проверяет, что год не превышает текущий год."""
     current_year = datetime.now().year
     if value > current_year:
         raise serializers.ValidationError(
-            'Год выпуска произведения не может превышать '
-            f'текущий год ({current_year}).'
+            'Год выпуска произведения не может '
+            f'превышать текущий год ({current_year}).'
         )
     return value
 
@@ -29,7 +41,7 @@ def validate_not_empty(value, field_name: str = 'поле') -> None:
     """Проверяет, что переданное значение не пустое."""
     if not value:
         raise serializers.ValidationError(
-            f'Список {field_name} не ' 'может быть пустым.'
+            f'Список {field_name} ' 'не может быть пустым.'
         )
     return value
 
@@ -42,9 +54,9 @@ def update_instance_fields(instance, validated_data: dict):
     return instance
 
 
-# ==============================
+# =====================================
 # Поле USERNAME_FIELD
-# ==============================
+# =====================================
 USERNAME_FIELD = serializers.CharField(
     max_length=MAX_LENGTH,
     validators=[
@@ -58,16 +70,16 @@ USERNAME_FIELD = serializers.CharField(
 )
 
 
-# ==============================
+# =====================================
 # Category Serializers
-# ==============================
+# =====================================
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для модели категории."""
 
     class Meta:
         model = Category
-        fields = ('id', 'name', 'slug')
-        read_only_fields = ('id',)
+        fields = CATEGORY_GENRE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
 
 class CategoryListCreateSerializer(serializers.ModelSerializer):
@@ -78,16 +90,16 @@ class CategoryListCreateSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-# ==============================
+# =====================================
 # Genre Serializers
-# ==============================
+# =====================================
 class GenreSerializer(serializers.ModelSerializer):
     """Сериализатор для модели жанра."""
 
     class Meta:
         model = Genre
-        fields = ('id', 'name', 'slug')
-        read_only_fields = ('id',)
+        fields = CATEGORY_GENRE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
 
 class GenreListCreateSerializer(serializers.ModelSerializer):
@@ -98,9 +110,9 @@ class GenreListCreateSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-# ==============================
+# =====================================
 # Title Serializers
-# ==============================
+# =====================================
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для модели произведения (базовый)."""
 
@@ -118,8 +130,8 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = ('id', 'name', 'year', 'description', 'category', 'genre')
-        read_only_fields = ('id',)
+        fields = TITLE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
 
 class TitleListCreateSerializer(serializers.ModelSerializer):
@@ -140,8 +152,8 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = ('id', 'name', 'year', 'description', 'category', 'genre')
-        read_only_fields = ('id',)
+        fields = TITLE_FIELDS
+        read_only_fields = READ_ONLY_ID
 
     def validate_genre(self, value):
         """Проверяет, что список жанров не пуст."""
@@ -181,18 +193,9 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (
-            'id',
-            'name',
-            'year',
-            'description',
-            'category',
-            'genre',
-            'rating',
-        )
+        fields = (*TITLE_FIELDS, 'rating')
 
     def to_representation(self, instance):
-        """Возвращает представление с пустой строкой, если описание None."""
         representation = super().to_representation(instance)
         if representation.get("description") is None:
             representation["description"] = ""
@@ -200,7 +203,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
 
 # ==============================
-# BaseAuthSerializer и производные для аутентификации и регистрации
+# Базовые сериализаторы для аутентификации и регистрации
 # ==============================
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
@@ -236,7 +239,7 @@ class TokenSerializer(BaseAuthSerializer):
 
 
 # ==============================
-# Базовый сериализатор для работы с данными пользователя
+# Сериализаторы профиля
 # ==============================
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
