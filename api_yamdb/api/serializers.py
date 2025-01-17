@@ -1,74 +1,14 @@
-from datetime import datetime
-
 from django.contrib.auth import get_user_model
-from django.core.validators import RegexValidator
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.relations import SlugRelatedField
 
-from api.utils import NotMeValidator, already_use
-from reviews.models import Category, Genre, Title, Comment, Review
-from users.models import MAX_LENGTH, EMAIL_LENGTH, MESSAGE
+from api import constants as ca
+from api import utils
+from reviews.models import Category, Comment, Genre, Review, Title
+from users import constants as cu
 
 User = get_user_model()
-
-# =====================================
-# Константы для повторяющихся полей
-# =====================================
-CATEGORY_GENRE_FIELDS = ('id', 'name', 'slug')
-READ_ONLY_ID = ('id',)
-TITLE_FIELDS = ('id', 'name', 'year', 'description', 'category', 'genre')
-
-# Дополнительные переменные (в сериализаторы профиля, отзывов и комментов).
-READ_ONLY_ID_AUTHOR_PUB_DATE = ('id', 'author', 'pub_date')
-USER_FIELDS = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
-
-
-# =====================================
-# Вспомогательные функции
-# =====================================
-def validate_year_not_exceed_current(value: int) -> int:
-    """Проверяет, что год не превышает текущий год."""
-    current_year = datetime.now().year
-    if value > current_year:
-        raise serializers.ValidationError(
-            'Год выпуска произведения не может '
-            f'превышать текущий год ({current_year}).'
-        )
-    return value
-
-
-def validate_not_empty(value, field_name: str = 'поле') -> None:
-    """Проверяет, что переданное значение не пустое."""
-    if not value:
-        raise serializers.ValidationError(
-            f'Список {field_name} ' 'не может быть пустым.'
-        )
-    return value
-
-
-def update_instance_fields(instance, validated_data: dict):
-    """Обновляет поля объекта на основе validated_data и сохраняет."""
-    for attr, value in validated_data.items():
-        setattr(instance, attr, value)
-    instance.save()
-    return instance
-
-
-# =====================================
-# Поле USERNAME_FIELD
-# =====================================
-USERNAME_FIELD = serializers.CharField(
-    max_length=MAX_LENGTH,
-    validators=[
-        RegexValidator(
-            regex=r'^[\w.@+-]+\Z',
-            message=MESSAGE,
-            code='invalid_username',
-        ),
-        NotMeValidator(),
-    ],
-)
 
 
 # =====================================
@@ -79,8 +19,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = CATEGORY_GENRE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = ca.CATEGORY_GENRE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
 
 class CategoryListCreateSerializer(serializers.ModelSerializer):
@@ -99,8 +39,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = CATEGORY_GENRE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = ca.CATEGORY_GENRE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
 
 class GenreListCreateSerializer(serializers.ModelSerializer):
@@ -131,8 +71,8 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = TITLE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = ca.TITLE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
 
 class TitleListCreateSerializer(serializers.ModelSerializer):
@@ -153,16 +93,16 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = TITLE_FIELDS
-        read_only_fields = READ_ONLY_ID
+        fields = ca.TITLE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
     def validate_genre(self, value):
         """Проверяет, что список жанров не пуст."""
-        return validate_not_empty(value, 'жанров')
+        return utils.validate_not_empty(value, 'жанров')
 
     def validate_year(self, value):
         """Проверяет, что год произведения не превышает текущий."""
-        return validate_year_not_exceed_current(value)
+        return utils.validate_year_not_exceed_current(value)
 
     def create(self, validated_data):
         """Создаёт произведение и устанавливает жанры."""
@@ -174,7 +114,7 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         """Обновляет произведение и жанры при необходимости."""
         genres = validated_data.pop('genre', None)
-        instance = update_instance_fields(instance, validated_data)
+        instance = utils.update_instance_fields(instance, validated_data)
         if genres is not None:
             instance.genre.set(genres)
         return instance
@@ -194,7 +134,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (*TITLE_FIELDS, 'rating')
+        fields = (*ca.TITLE_FIELDS, 'rating')
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -209,16 +149,16 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
-    username = USERNAME_FIELD
+    username = ca.USERNAME_FIELD
 
 
 class SignUpSerializer(BaseAuthSerializer):
     """Сериализатор для авторизации."""
 
-    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+    email = serializers.EmailField(max_length=cu.EMAIL_LENGTH)
 
     def validate(self, attrs):
-        return already_use(attrs)
+        return utils.already_use(attrs)
 
 
 class TokenSerializer(BaseAuthSerializer):
@@ -234,7 +174,7 @@ class TokenSerializer(BaseAuthSerializer):
             raise NotFound(dict(username='Пользователь не существует'))
         except KeyError as e:
             raise ValidationError(e)
-        if user.activation_code != confirmation_code:
+        if user.confirmation_code != confirmation_code:
             raise ValidationError(
                 dict(confirmation_code='Неверный код подтверждения')
             )
@@ -247,41 +187,28 @@ class TokenSerializer(BaseAuthSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
-    username = USERNAME_FIELD
+    username = ca.USERNAME_FIELD
 
     class Meta:
         model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role',
-        )
+        fields = ca.USER_FIELDS
         read_only_fields = ('role',)
 
     def validate(self, attrs):
-        return already_use(attrs)
+        return utils.already_use(attrs)
 
 
 class ForAdminSerializer(serializers.ModelSerializer):
+    """Сериализатор модели пользователя с правами администратора."""
 
-    username = USERNAME_FIELD
+    username = ca.USERNAME_FIELD
 
     class Meta:
         model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role',
-        )
+        fields = ca.USER_FIELDS
 
     def validate(self, attrs):
-        return already_use(attrs)
+        return utils.already_use(attrs)
 
 
 # ==============================
@@ -295,7 +222,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'score', 'author', 'pub_date')
-        read_only_fields = READ_ONLY_ID_AUTHOR_PUB_DATE
+        read_only_fields = ca.READ_ONLY_ID_AUTHOR_PUB_DATE
 
     def validate_score(self, value):
         if not (1 <= value <= 10):
@@ -338,4 +265,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        read_only_fields = READ_ONLY_ID_AUTHOR_PUB_DATE
+        read_only_fields = ca.READ_ONLY_ID_AUTHOR_PUB_DATE

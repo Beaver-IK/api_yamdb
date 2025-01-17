@@ -1,9 +1,10 @@
 import csv
 import os
 
-from django.core.management.base import BaseCommand, CommandError
-from reviews.models import Category, Comment, Genre, Review, Title
 from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand, CommandError
+
+from reviews.models import Category, Comment, Genre, Review, Title
 
 CustomUser = get_user_model()
 
@@ -165,7 +166,7 @@ class Command(BaseCommand):
             )
         except Exception as e:
             raise CommandError(
-                'Ошибка при импорте данных ' 'для ' '"{model_name}": {e}'
+                f'Ошибка при импорте данных для "{model_name}": {e}'
             )
 
     def import_all(self, base_dir):

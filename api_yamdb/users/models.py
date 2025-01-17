@@ -1,14 +1,13 @@
-from django.db import models
+from datetime import datetime, timedelta, timezone
+
 from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
                                         PermissionsMixin)
-from django.core.validators import RegexValidator
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
+from django.db import models
 from django.utils import timezone
-from datetime import timezone, datetime, timedelta
 
-MAX_LENGTH = 150
-MESSAGE = (f'Возможно использование букв, цифр и спецсимволов @,.,+,-,_')
-EMAIL_LENGTH = 254
+from users import constants as c
 
 
 class CustomUserManager(BaseUserManager):
@@ -25,7 +24,7 @@ class CustomUserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
-    
+
     def create_moderator(self, username, email, password=None, **extra_fields):
         extra_fields.setdefault('role', 'moderator')
         extra_fields.setdefault('is_active', True)
@@ -43,33 +42,36 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Кастомная модель пользователя."""
 
     ROLE_CHOICES = [
-      ('user', 'User'),
-      ('moderator', 'Moderator'),
-      ('admin', 'Admin')
+        ('user', 'User'),
+        ('moderator', 'Moderator'),
+        ('admin', 'Admin')
     ]
 
     username = models.CharField(
-        max_length=MAX_LENGTH,
+        max_length=c.MAX_LENGTH_USERNAME,
         unique=True,
-        help_text=f'Максимальная длина {MAX_LENGTH} символов. {MESSAGE}',
+        help_text=(f'Максимальная длина {c.MAX_LENGTH_USERNAME} символов. '
+                   f'{c.MESSAGE}'
+                   ),
         validators=[
-            RegexValidator(
-                regex=r'^[\w.@+-]+\Z',
-                message=MESSAGE,
-                code='invalid_username',   
-            ),
+            RegexValidator(regex=r'^[\w.@+-]+\Z',
+                           message=c.MESSAGE,
+                           code='invalid_username',
+                           ),
         ],
     )
-    email = models.EmailField(max_length=EMAIL_LENGTH, unique=True)
-    first_name = models.CharField(max_length=MAX_LENGTH, blank=True)
-    last_name = models.CharField(max_length=MAX_LENGTH, blank=True)
+    email = models.EmailField(max_length=c.EMAIL_LENGTH, unique=True)
+    first_name = models.CharField(max_length=c.MAX_LENGTH_FIRST_NAME,
+                                  blank=True
+                                  )
+    last_name = models.CharField(max_length=c.MAX_LENGTH_LAST_NAME, blank=True)
     bio = models.TextField(blank=True)
     role = models.CharField(
         max_length=10,
         choices=ROLE_CHOICES,
         default='user'
     )
-    activation_code = models.CharField(max_length=36, blank=True, null=True)
+    confirmation_code = models.CharField(max_length=36, blank=True, null=True)
     validity_code = models.DateTimeField(
         blank=True,
         null=True
@@ -86,20 +88,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.username
 
     def clean(self):
-         super().clean()
-         if not self.username:
+        super().clean()
+        if not self.username:
             raise ValidationError({'username': 'Отсутствует username'})
-         if not self.email:
+        if not self.email:
             raise ValidationError({'email': 'Отсутствует email'})
-    
+
     def generate_code(self):
-           import uuid
-           self.activation_code = str(uuid.uuid4())
-           self.validity_code = datetime.now(timezone.utc) + timedelta(hours=24)
+        import uuid
+        self.confirmation_code = str(uuid.uuid4())
+        self.validity_code = datetime.now(timezone.utc) + timedelta(hours=24)
 
     def clear_code(self):
-          self.activation_code = None
-          self.validity_code = None
+        self.confirmation_code = None
+        self.validity_code = None
 
     @classmethod
     def already_use(cls, kwargs):

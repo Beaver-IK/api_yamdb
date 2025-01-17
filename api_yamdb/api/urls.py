@@ -1,38 +1,28 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from api.views import (
-    CategoryViewSet,
-    GenreViewSet,
-    TitleViewSet,
-    ReviewViewSet,
-    CommentViewSet,
-    SignUpView,
-    TokenView,
-    UsersViewSet
-    # MeViewSet
-)
+
+from api import views as v
 
 router = DefaultRouter()
-router.register('categories', CategoryViewSet, basename='category')
-router.register('genres', GenreViewSet, basename='genre')
-router.register('titles', TitleViewSet, basename='title')
+router.register('categories', v.CategoryViewSet, basename='category')
+router.register('genres', v.GenreViewSet, basename='genre')
+router.register('titles', v.TitleViewSet, basename='title')
 router.register(
     r'titles/(?P<title_id>\d+)/reviews',
-    ReviewViewSet,
+    v.ReviewViewSet,
     basename='review'
 )
 router.register(
     r'titles/(?P<title_id>\d+)/reviews/(?P<review_id>\d+)/comments',
-    CommentViewSet,
+    v.CommentViewSet,
     basename='comment'
 )
-router.register('users', UsersViewSet, basename='users')
-# router.register('users/me', MeViewSet, basename='me')
+router.register('users', v.UsersViewSet, basename='users')
 
 auth_url = [
-    (path('signup/', SignUpView.as_view(),
+    (path('signup/', v.SignUpView.as_view(),
           name='signup')),
-    (path('token/', TokenView.as_view(),
+    (path('token/', v.TokenView.as_view(),
           name='token')),
 ]
 
