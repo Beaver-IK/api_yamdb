@@ -3,10 +3,10 @@ from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.relations import SlugRelatedField
 
+from api import constants as ca
 from api import utils
-from api import constants as CA
-from reviews.models import Category, Genre, Title, Comment, Review
-from users import constants as CU
+from reviews.models import Category, Comment, Genre, Review, Title
+from users import constants as cu
 
 User = get_user_model()
 
@@ -19,8 +19,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = CA.CATEGORY_GENRE_FIELDS
-        read_only_fields = CA.READ_ONLY_ID
+        fields = ca.CATEGORY_GENRE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
 
 class CategoryListCreateSerializer(serializers.ModelSerializer):
@@ -39,8 +39,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = CA.CATEGORY_GENRE_FIELDS
-        read_only_fields = CA.READ_ONLY_ID
+        fields = ca.CATEGORY_GENRE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
 
 class GenreListCreateSerializer(serializers.ModelSerializer):
@@ -71,8 +71,8 @@ class TitleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = CA.TITLE_FIELDS
-        read_only_fields = CA.READ_ONLY_ID
+        fields = ca.TITLE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
 
 class TitleListCreateSerializer(serializers.ModelSerializer):
@@ -93,8 +93,8 @@ class TitleListCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = CA.TITLE_FIELDS
-        read_only_fields = CA.READ_ONLY_ID
+        fields = ca.TITLE_FIELDS
+        read_only_fields = ca.READ_ONLY_ID
 
     def validate_genre(self, value):
         """Проверяет, что список жанров не пуст."""
@@ -134,7 +134,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = (*CA.TITLE_FIELDS, 'rating')
+        fields = (*ca.TITLE_FIELDS, 'rating')
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -149,13 +149,13 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
-    username = CA.USERNAME_FIELD
+    username = ca.USERNAME_FIELD
 
 
 class SignUpSerializer(BaseAuthSerializer):
     """Сериализатор для авторизации."""
 
-    email = serializers.EmailField(max_length=CU.EMAIL_LENGTH)
+    email = serializers.EmailField(max_length=cu.EMAIL_LENGTH)
 
     def validate(self, attrs):
         return utils.already_use(attrs)
@@ -187,11 +187,11 @@ class TokenSerializer(BaseAuthSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
-    username = CA.USERNAME_FIELD
+    username = ca.USERNAME_FIELD
 
     class Meta:
         model = User
-        fields = CA.USER_FIELDS
+        fields = ca.USER_FIELDS
         read_only_fields = ('role',)
 
     def validate(self, attrs):
@@ -200,11 +200,12 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 class ForAdminSerializer(serializers.ModelSerializer):
     """Сериализатор модели пользователя с правами администратора."""
-    username = CA.USERNAME_FIELD
+
+    username = ca.USERNAME_FIELD
 
     class Meta:
         model = User
-        fields = CA.USER_FIELDS
+        fields = ca.USER_FIELDS
 
     def validate(self, attrs):
         return utils.already_use(attrs)
@@ -221,7 +222,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Review
         fields = ('id', 'text', 'score', 'author', 'pub_date')
-        read_only_fields = CA.READ_ONLY_ID_AUTHOR_PUB_DATE
+        read_only_fields = ca.READ_ONLY_ID_AUTHOR_PUB_DATE
 
     def validate_score(self, value):
         if not (1 <= value <= 10):
@@ -264,4 +265,4 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'text', 'author', 'pub_date')
-        read_only_fields = CA.READ_ONLY_ID_AUTHOR_PUB_DATE
+        read_only_fields = ca.READ_ONLY_ID_AUTHOR_PUB_DATE

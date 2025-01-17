@@ -2,7 +2,7 @@ from django.core.validators import RegexValidator
 from rest_framework import serializers
 
 from api.validators import NotMeValidator
-from users import constants as CU
+from users import constants as cu
 
 # =====================================
 # Константы для повторяющихся полей
@@ -20,11 +20,11 @@ USER_FIELDS = ('username', 'email', 'first_name', 'last_name', 'bio', 'role')
 # Поле USERNAME_FIELD
 # =====================================
 USERNAME_FIELD = serializers.CharField(
-    max_length=CU.MAX_LENGTH_USERNAME,
+    max_length=cu.MAX_LENGTH_USERNAME,
     validators=[
         RegexValidator(
             regex=r'^[\w.@+-]+\Z',
-            message=CU.MESSAGE,
+            message=cu.MESSAGE,
             code='invalid_username',
         ),
         NotMeValidator(),

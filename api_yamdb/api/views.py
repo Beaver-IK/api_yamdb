@@ -1,20 +1,17 @@
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, mixins, viewsets
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (
-    IsAuthenticatedOrReadOnly,
-    IsAuthenticated,
-    AllowAny,
-)
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 
 from api import permissions as pms
 from api import serializers as sz
-from api.utils import send_activation_email
-from reviews.models import Category, Genre, Title, Review
+from api.utils import build_filter_for_title, send_activation_email
+from reviews.models import Category, Genre, Review, Title
 from users.authentication import generate_jwt_token
 
 User = get_user_model()
@@ -73,24 +70,9 @@ class TitleViewSet(viewsets.ModelViewSet):
             return sz.TitleReadSerializer
         return sz.TitleListCreateSerializer
 
-    def build_filter_kwargs(self):
-        """Формирует словарь фильтров по переданным параметрам."""
-        param_map = {
-            'category': 'category__slug',
-            'genre': 'genre__slug',
-            'year': 'year',
-            'name': 'name__icontains',
-        }
-        filters_dict = {}
-        for query_param, filter_field in param_map.items():
-            value = self.request.query_params.get(query_param)
-            if value:
-                filters_dict[filter_field] = value
-        return filters_dict
-
     def get_queryset(self):
         queryset = super().get_queryset()
-        filters_dict = self.build_filter_kwargs()
+        filters_dict = build_filter_for_title(self.request.query_params)
         if filters_dict:
             queryset = queryset.filter(**filters_dict)
         return queryset
@@ -220,6 +202,7 @@ class TokenView(APIView):
         user.is_active = True
         user.save()
         token = generate_jwt_token(user)
+        user.clear_code()
         return Response({'token': token}, status=status.HTTP_200_OK)
 
 

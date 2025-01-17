@@ -166,7 +166,7 @@ class Command(BaseCommand):
             )
         except Exception as e:
             raise CommandError(
-                'Ошибка при импорте данных ' 'для ' '"{model_name}": {e}'
+                f'Ошибка при импорте данных для "{model_name}": {e}'
             )
 
     def import_all(self, base_dir):
