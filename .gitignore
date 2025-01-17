@@ -109,6 +109,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+_api_yamdb_venv
 
 # Spyder project settings
 .spyderproject
@@ -148,3 +149,8 @@ dmypy.json
 # папки со статикой и медиа
 media/
 
+.flake8
+.isort.cfg
+
+# Папка с временными файлами
+tmp/
