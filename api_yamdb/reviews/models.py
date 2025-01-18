@@ -3,8 +3,9 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from .validators import validate_year_not_exceed_current
 from reviews import constants as cr
+
+from .validators import validate_year_not_exceed_current
 
 User = get_user_model()
 

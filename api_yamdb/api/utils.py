@@ -3,7 +3,6 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
-from django.utils.deconstruct import deconstructible
 from rest_framework.serializers import ValidationError
 
 User = get_user_model()

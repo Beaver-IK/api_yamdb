@@ -143,7 +143,10 @@ class TokenSerializer(BaseAuthSerializer):
         except KeyError as e:
             raise ValidationError(e)
         if user.confirmation_code != confirmation_code:
-            raise ValidationError(dict(confirmation_code='Неверный код подтверждения'))
+            raise ValidationError(dict(
+                confirmation_code='Неверный код подтверждения'
+            )
+            )
         return attrs
 
 
@@ -195,7 +198,8 @@ class ReviewSerializer(serializers.ModelSerializer):
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(title_id=title_id, author=author).exists():
+            if Review.objects.filter(title_id=title_id,
+                                     author=author).exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв для этого произведения.'
                 )

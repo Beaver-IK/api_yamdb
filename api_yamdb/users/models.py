@@ -1,10 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
-from django.contrib.auth.models import (
-    AbstractBaseUser,
-    BaseUserManager,
-    PermissionsMixin,
-)
+from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
+                                        PermissionsMixin)
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
@@ -59,7 +56,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         max_length=c.MAX_LENGTH_USERNAME,
         unique=True,
         help_text=(
-            f'Максимальная длина {c.MAX_LENGTH_USERNAME} символов. ' f'{c.MESSAGE}'
+            f'Максимальная длина {c.MAX_LENGTH_USERNAME} символов. '
+            f'{c.MESSAGE}'
         ),
         validators=[
             RegexValidator(
@@ -70,10 +68,17 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         ],
     )
     email = models.EmailField(max_length=c.EMAIL_LENGTH, unique=True)
-    first_name = models.CharField(max_length=c.MAX_LENGTH_FIRST_NAME, blank=True)
+    first_name = models.CharField(
+        max_length=c.MAX_LENGTH_FIRST_NAME,
+        blank=True
+    )
     last_name = models.CharField(max_length=c.MAX_LENGTH_LAST_NAME, blank=True)
     bio = models.TextField(blank=True)
-    role = models.CharField(max_length=10, choices=Roles.choices, default=Roles.USER)
+    role = models.CharField(
+        max_length=10,
+        choices=Roles.choices,
+        default=Roles.USER
+    )
     confirmation_code = models.CharField(max_length=36, blank=True, null=True)
     validity_code = models.DateTimeField(blank=True, null=True)
     is_active = models.BooleanField(default=False)
@@ -83,7 +88,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
-    
+
     class Meta:
         verbose_name = ('Пользователь')
         verbose_name_plural = ('Пользователи')

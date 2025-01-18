@@ -4,7 +4,6 @@ from rest_framework import serializers
 from api.validators import NotMeValidator
 from users import constants as cu
 
-
 # =====================================
 # Поле USERNAME_FIELD
 # =====================================
