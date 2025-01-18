@@ -176,12 +176,12 @@ class SignUpView(APIView):
             user = User.objects.get(email=email, username=username)
             user.generate_code()
             user.save()
-            send_activation_email(user, request)
+            send_activation_email(user)
         except User.DoesNotExist:
             user = User.objects.create_user(username=username, email=email)
             user.generate_code()
             user.save()
-            send_activation_email(user, request)
+            send_activation_email(user)
         return Response(
             dict(email=user.email, username=user.username),
             status=status.HTTP_200_OK,
