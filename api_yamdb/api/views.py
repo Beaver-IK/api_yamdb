@@ -40,30 +40,24 @@ class GenreViewSet(ListCreateDestroyViewSet):
     lookup_field = 'slug'
 
 
-class TitleViewSet(viewsets.ModelViewSet):
-    """Вьюсет для управления произведениями."""
-
-    queryset = Title.objects.order_by('name')
-    permission_classes = [pms.IsAdminOrReadOnly]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = TitleFilter
-    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
-
-    def get_serializer_class(self):
-        if self.action in ('list', 'retrieve'):
-            return sz.TitleReadSerializer
-        return sz.TitleWriteSerializer
-
-    def perform_create(self, serializer):
-        serializer.save()
-
-    def perform_update(self, serializer):
-        serializer.save()
-
-    def perform_create(self, serializer):
-        serializer.save()
-
-    def perform_update(self, serializer):
+class TitleViewSet(viewsets.ModelViewSet): 
+    """Вьюсет для управления произведениями.""" 
+ 
+    queryset = Title.objects.order_by('name') 
+    permission_classes = [pms.IsAdminOrReadOnly] 
+    filter_backends = [DjangoFilterBackend] 
+    filterset_class = TitleFilter 
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options'] 
+ 
+    def get_serializer_class(self): 
+        if self.action in ('list', 'retrieve'): 
+            return sz.TitleReadSerializer 
+        return sz.TitleWriteSerializer 
+ 
+    def perform_create(self, serializer): 
+        serializer.save() 
+ 
+    def perform_update(self, serializer): 
         serializer.save()
 
 
