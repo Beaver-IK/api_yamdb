@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action
@@ -75,6 +76,7 @@ class TitleViewSet(viewsets.ModelViewSet):
         filters_dict = build_filter_for_title(self.request.query_params)
         if filters_dict:
             queryset = queryset.filter(**filters_dict)
+        queryset = queryset.annotate(rating=Avg('reviews_set__score'))
         return queryset
 
     def perform_create(self, serializer):
@@ -122,19 +124,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
         pms.IsAuthorOrModeratorOrAdmin,
     ]
     http_method_names = ['get', 'post', 'patch', 'delete']
-    queryset = Review.objects.all().order_by('-pub_date')
+    queryset = Review.objects.order_by('-pub_date')
 
     def get_title(self):
         return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
 
     def get_queryset(self):
-        title_id = self.kwargs.get('title_id')
-        return Review.objects.filter(title_id=title_id).order_by('-pub_date')
+        return self.get_title().reviews_set.order_by('-pub_date')
 
     def perform_create(self, serializer):
         title = self.get_title()
         serializer.save(title=title, author=self.request.user)
-        title.update_average_rating()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -155,7 +155,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        return self.get_review().comments.all().order_by('-pub_date')
+        return self.get_review().comments.order_by('-pub_date')
 
     def perform_create(self, serializer):
         serializer.save(review=self.get_review(), author=self.request.user)
