@@ -118,7 +118,7 @@ class SignUpView(APIView):
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
-        user = User.objects.get_or_create(email=email, username=username)
+        user = User.objects.get_or_create(email=email, username=username)[0]
         user.generate_code()
         user.save()
         send_activation_email(user)
