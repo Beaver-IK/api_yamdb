@@ -70,14 +70,3 @@ def update_instance_fields(instance, validated_data: dict):
         setattr(instance, attr, value)
     instance.save()
     return instance
-
-
-@deconstructible
-class NotMeValidator:
-    """Валидатор для поля username."""
-
-    def __call__(self, value):
-        if value.lower() == 'me':
-            raise ValidationError('Нельзя использовать "me" '
-                                  'в качестве "username"'
-                                  )

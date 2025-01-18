@@ -198,7 +198,7 @@ class TokenView(APIView):
         serializer = sz.TokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
-        user = User.objects.get(username=username)
+        user = get_object_or_404(User, username=username)
         user.is_active = True
         user.save()
         token = generate_jwt_token(user)

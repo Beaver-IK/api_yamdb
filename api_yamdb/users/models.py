@@ -40,12 +40,17 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Кастомная модель пользователя."""
+    
+    class Roles(models.TextChoices):
+        USER = 'user', 'User'
+        MODERATOR = 'moderator', 'Moderator'
+        ADMIN = 'admin', 'Admin'
 
-    ROLE_CHOICES = [
+    """ROLE_CHOICES = [
         ('user', 'User'),
         ('moderator', 'Moderator'),
         ('admin', 'Admin')
-    ]
+    ]"""
 
     username = models.CharField(
         max_length=c.MAX_LENGTH_USERNAME,
@@ -68,8 +73,8 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     bio = models.TextField(blank=True)
     role = models.CharField(
         max_length=10,
-        choices=ROLE_CHOICES,
-        default='user'
+        choices=Roles.choices,
+        default=Roles.USER
     )
     confirmation_code = models.CharField(max_length=36, blank=True, null=True)
     validity_code = models.DateTimeField(
