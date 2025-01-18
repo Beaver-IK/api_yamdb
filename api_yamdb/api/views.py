@@ -60,6 +60,12 @@ class TitleViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save()
 
+    def perform_create(self, serializer):
+        serializer.save()
+
+    def perform_update(self, serializer):
+        serializer.save()
+
 
 class ReviewViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления отзывами."""
@@ -70,19 +76,17 @@ class ReviewViewSet(viewsets.ModelViewSet):
         pms.IsAuthorOrModeratorOrAdmin,
     ]
     http_method_names = ['get', 'post', 'patch', 'delete']
-    queryset = Review.objects.all().order_by('-pub_date')
+    queryset = Review.objects.order_by('-pub_date')
 
     def get_title(self):
         return get_object_or_404(Title, pk=self.kwargs.get('title_id'))
 
     def get_queryset(self):
-        title_id = self.kwargs.get('title_id')
-        return Review.objects.filter(title_id=title_id).order_by('-pub_date')
+        return self.get_title().reviews_set.order_by('-pub_date')
 
     def perform_create(self, serializer):
         title = self.get_title()
         serializer.save(title=title, author=self.request.user)
-        title.update_average_rating()
 
 
 class CommentViewSet(viewsets.ModelViewSet):
@@ -103,7 +107,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def get_queryset(self):
-        return self.get_review().comments.all().order_by('-pub_date')
+        return self.get_review().comments.order_by('-pub_date')
 
     def perform_create(self, serializer):
         serializer.save(review=self.get_review(), author=self.request.user)
