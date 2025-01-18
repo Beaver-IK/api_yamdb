@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Avg
 from django.utils.translation import gettext_lazy as _
 
 from .validators import validate_year_not_exceed_current
@@ -69,14 +68,7 @@ class Genre(BaseCategoryGenre):
 
 
 class Title(models.Model):
-    """Модель для произведений (фильмы, книги и т.д.).
-
-    NOTE:
-    Тесты Я.Практикума требуют, чтобы у Title было физическое поле rating
-    и метод update_average_rating, вызываемый при создании/обновлении Review.
-    Поэтому поле rating оставлено в базе и обновляется вручную, хотя обычно
-    рейтинг можно вычислять "на лету" с помощью annotate() при GET-запросах.
-    """
+    """Модель для произведений (фильмы, книги и т.д.)."""
 
     name = models.CharField(
         max_length=cr.MAX_NAME_LENGTH,
@@ -104,22 +96,11 @@ class Title(models.Model):
     genre = models.ManyToManyField(
         Genre, related_name='titles', verbose_name=_("Жанры")
     )
-    rating = models.IntegerField(
-        null=True,
-        default=None,
-        verbose_name=_("Рейтинг"),
-        help_text=_("Средний рейтинг произведения, пересчитывается."),
-    )
 
     class Meta:
         verbose_name = _("Произведение")
         verbose_name_plural = _("Произведения")
         ordering = ['name']
-
-    def update_average_rating(self):
-        average = self.reviews_set.aggregate(Avg('score'))['score__avg']
-        self.rating = round(average) if average is not None else None
-        self.save(update_fields=['rating'])
 
     def __str__(self):
         return self.name
