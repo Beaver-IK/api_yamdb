@@ -1,7 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
-from django.contrib.auth.models import (AbstractBaseUser, BaseUserManager,
-                                        PermissionsMixin)
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
@@ -40,7 +43,7 @@ class CustomUserManager(BaseUserManager):
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     """Кастомная модель пользователя."""
-    
+
     class Roles(models.TextChoices):
         USER = 'user', 'User'
         MODERATOR = 'moderator', 'Moderator'
@@ -55,32 +58,24 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     username = models.CharField(
         max_length=c.MAX_LENGTH_USERNAME,
         unique=True,
-        help_text=(f'Максимальная длина {c.MAX_LENGTH_USERNAME} символов. '
-                   f'{c.MESSAGE}'
-                   ),
+        help_text=(
+            f'Максимальная длина {c.MAX_LENGTH_USERNAME} символов. ' f'{c.MESSAGE}'
+        ),
         validators=[
-            RegexValidator(regex=r'^[\w.@+-]+\Z',
-                           message=c.MESSAGE,
-                           code='invalid_username',
-                           ),
+            RegexValidator(
+                regex=r'^[\w.@+-]+\Z',
+                message=c.MESSAGE,
+                code='invalid_username',
+            ),
         ],
     )
     email = models.EmailField(max_length=c.EMAIL_LENGTH, unique=True)
-    first_name = models.CharField(max_length=c.MAX_LENGTH_FIRST_NAME,
-                                  blank=True
-                                  )
+    first_name = models.CharField(max_length=c.MAX_LENGTH_FIRST_NAME, blank=True)
     last_name = models.CharField(max_length=c.MAX_LENGTH_LAST_NAME, blank=True)
     bio = models.TextField(blank=True)
-    role = models.CharField(
-        max_length=10,
-        choices=Roles.choices,
-        default=Roles.USER
-    )
+    role = models.CharField(max_length=10, choices=Roles.choices, default=Roles.USER)
     confirmation_code = models.CharField(max_length=36, blank=True, null=True)
-    validity_code = models.DateTimeField(
-        blank=True,
-        null=True
-    )
+    validity_code = models.DateTimeField(blank=True, null=True)
     is_active = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
@@ -88,6 +83,10 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     objects = CustomUserManager()
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
+    
+    class Meta:
+        verbose_name = ('Пользователь')
+        verbose_name_plural = ('Пользователи')
 
     def __str__(self):
         return self.username
@@ -101,6 +100,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def generate_code(self):
         import uuid
+
         self.confirmation_code = str(uuid.uuid4())
         self.validity_code = datetime.now(timezone.utc) + timedelta(hours=24)
 
@@ -118,3 +118,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         if cls.objects.filter(email=email).exclude(username=username).exists():
             errors['email'] = f'Email {email} уже используется.'
         return errors
+
+    @property
+    def is_admin(self):
+        return self.is_superuser or self.role == self.Roles.ADMIN
+
+    @property
+    def is_moderator(self):
+        return self.role == self.Roles.MODERATOR
