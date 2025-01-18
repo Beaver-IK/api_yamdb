@@ -1,8 +1,26 @@
 from django.contrib.auth import get_user_model
-from django.core.validators import MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 User = get_user_model()
+
+
+class RCBase(models.Model):
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='%(app_label)s_%(class)s_related',
+        verbose_name='автор',
+    )
+    text = models.TextField('текст',)
+    pub_date = models.DateTimeField(
+        'дата добавления',
+        auto_now_add=True,
+        db_index=True,
+    )
+
+    class Meta:
+        abstract = True
 
 
 class Category(models.Model):
@@ -48,20 +66,6 @@ class Title(models.Model):
         related_name='title_reviews',
         blank=True,
     )
-    rating = models.IntegerField(null=True, default=None)
-
-    def update_average_rating(self):
-        """Обновляет средний рейтинг произведения."""
-        average = Review.objects.filter(title=self).aggregate(
-            models.Avg(
-                'score',
-            )
-        )['score__avg']
-        if average is None:
-            self.rating = None
-        else:
-            self.rating = round(average)
-        self.save(update_fields=['rating'])
 
     class Meta:
         verbose_name = 'Title'
@@ -71,31 +75,29 @@ class Title(models.Model):
         return self.name
 
 
-class Review(models.Model):
+class Review(RCBase):
     """Модель для отзывов."""
 
-    author = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='reviews',
-    )
     title = models.ForeignKey(
-        Title, on_delete=models.CASCADE, related_name='reviews_set'
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews_set',
+        verbose_name='произведение',
     )
-    text = models.TextField()
-    score = models.PositiveIntegerField(
-        validators=[MaxValueValidator(10)],
+    score = models.PositiveSmallIntegerField(
+        'оценка',
+        validators=[
+            MaxValueValidator(10),
+            MinValueValidator(1)
+        ],
         help_text='Оценка от 1 до 10',
         null=True,
         blank=True,
     )
-    pub_date = models.DateTimeField(
-        'Дата добавления',
-        auto_now_add=True,
-        db_index=True,
-    )
 
     class Meta:
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
         constraints = [
             models.UniqueConstraint(
                 fields=['author', 'title'],
@@ -103,28 +105,20 @@ class Review(models.Model):
             )
         ]
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        self.title.update_average_rating()
-
     def __str__(self):
         return f'Отзыв для {self.title.name} от {self.author.username}'
 
 
-class Comment(models.Model):
+class Comment(RCBase):
     """Модель для комментариев."""
 
-    author = models.ForeignKey(
-        User,
+    review = models.ForeignKey(
+        Review,
         on_delete=models.CASCADE,
         related_name='comments',
+        verbose_name='отзыв',
     )
-    review = models.ForeignKey(
-        Review, on_delete=models.CASCADE, related_name='comments'
-    )
-    text = models.TextField()
-    pub_date = models.DateTimeField(
-        'Дата добавления',
-        auto_now_add=True,
-        db_index=True,
-    )
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
