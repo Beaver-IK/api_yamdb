@@ -5,6 +5,7 @@ from rest_framework.relations import SlugRelatedField
 
 from api import constants as ca
 from api import utils
+from api.fields import USERNAME_FIELD
 from reviews.models import Category, Comment, Genre, Review, Title
 from users import constants as cu
 
@@ -138,8 +139,10 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        if representation.get("description") is None:
-            representation["description"] = ""
+        if representation.get('description') is None:
+            representation['description'] = ""
+        if representation.get('rating') is None:
+            representation['rating'] = None
         return representation
 
 
@@ -149,7 +152,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
-    username = ca.USERNAME_FIELD
+    username = USERNAME_FIELD
 
 
 class SignUpSerializer(BaseAuthSerializer):
@@ -187,7 +190,7 @@ class TokenSerializer(BaseAuthSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
-    username = ca.USERNAME_FIELD
+    username = USERNAME_FIELD
 
     class Meta:
         model = User
@@ -201,7 +204,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ForAdminSerializer(serializers.ModelSerializer):
     """Сериализатор модели пользователя с правами администратора."""
 
-    username = ca.USERNAME_FIELD
+    username = USERNAME_FIELD
 
     class Meta:
         model = User
@@ -224,13 +227,6 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ('id', 'text', 'score', 'author', 'pub_date')
         read_only_fields = ca.READ_ONLY_ID_AUTHOR_PUB_DATE
 
-    def validate_score(self, value):
-        if not (1 <= value <= 10):
-            raise serializers.ValidationError(
-                'Оценка должна быть в диапазоне от 1 до 10.'
-            )
-        return value
-
     def validate(self, data):
         request = self.context.get('request')
         if request.method == 'POST':
@@ -248,13 +244,6 @@ class ReviewSerializer(serializers.ModelSerializer):
                     {'score': 'Поле "score" обязательно для заполнения.'}
                 )
         return data
-
-    def create(self, validated_data):
-        validated_data['author'] = self.context['request'].user
-        validated_data['title_id'] = self.context['view'].kwargs.get(
-            'title_id',
-        )
-        return Review.objects.create(**validated_data)
 
 
 class CommentSerializer(serializers.ModelSerializer):
