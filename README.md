@@ -205,4 +205,9 @@
 *   Администраторы имеют полный доступ к API, используя JWT-токен, полученный при аутентификации.
 
 ## В разработке учавствовали
+*   Яндекс.Практикум (Авторство) [Сайт](https://practicum.yandex.ru/)
+*   Логунов Данила (Ревью)
+*   Концов Иван (Тимлид, backend developer) [Github](https://github.com/Beaver-IK)
+*   Марат Шамсутдинов (backend developer) [Github](https://github.com/MaratShamsutdinov)
+*   Максим Бирюков (backend developer) [Github](https://github.com/Nolfyn)
 
