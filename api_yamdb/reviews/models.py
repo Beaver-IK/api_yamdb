@@ -2,14 +2,16 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator
 from django.db import models
 
+from reviews import constants as cr
+
 User = get_user_model()
 
 
 class Category(models.Model):
     """Модель для категорий произведений."""
 
-    name = models.CharField(max_length=256, unique=True)
-    slug = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=cr.MAX_NAME_LENGTH, unique=True)
+    slug = models.SlugField(max_length=cr.MAX_SLUG_LENGTH, unique=True)
 
     class Meta:
         verbose_name = 'Category'
@@ -22,8 +24,8 @@ class Category(models.Model):
 class Genre(models.Model):
     """Модель для жанров произведений."""
 
-    name = models.CharField(max_length=256, unique=True)
-    slug = models.SlugField(max_length=50, unique=True)
+    name = models.CharField(max_length=cr.MAX_NAME_LENGTH, unique=True)
+    slug = models.SlugField(max_length=cr.MAX_SLUG_LENGTH, unique=True)
 
     class Meta:
         verbose_name = 'Genre'
@@ -36,7 +38,7 @@ class Genre(models.Model):
 class Title(models.Model):
     """Модель для произведений (фильмы, книги и т.д.)."""
 
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=cr.MAX_NAME_LENGTH)
     year = models.PositiveIntegerField()
     description = models.TextField(blank=True, null=True)
     category = models.ForeignKey(

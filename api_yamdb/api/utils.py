@@ -9,13 +9,11 @@ from rest_framework.serializers import ValidationError
 User = get_user_model()
 
 
-def send_activation_email(user, request):
+def send_activation_email(user):
     """Функция отправки письма."""
     code = user.confirmation_code
-    link = request.build_absolute_uri('/api/v1/auth/token/')
     message = (f'Привет {user.username}! \n'
-               f'Отправь на эндпоинт {link} \n'
-               f'username={user.username} и confirmation_code={code}')
+               f'Confirmation_code:{code}')
     send_mail('Activation',
               message,
               settings.EMAIL_HOST_USER,
@@ -72,14 +70,3 @@ def update_instance_fields(instance, validated_data: dict):
         setattr(instance, attr, value)
     instance.save()
     return instance
-
-
-@deconstructible
-class NotMeValidator:
-    """Валидатор для поля username."""
-
-    def __call__(self, value):
-        if value.lower() == 'me':
-            raise ValidationError('Нельзя использовать "me" '
-                                  'в качестве "username"'
-                                  )

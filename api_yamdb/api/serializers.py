@@ -5,6 +5,7 @@ from rest_framework.relations import SlugRelatedField
 
 from api import constants as ca
 from api import utils
+from api.fields import USERNAME_FIELD
 from reviews.models import Category, Comment, Genre, Review, Title
 from users import constants as cu
 
@@ -149,7 +150,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 class BaseAuthSerializer(serializers.Serializer):
     """Базовый сериализатор для регистрации и аутентификации."""
 
-    username = ca.USERNAME_FIELD
+    username = USERNAME_FIELD
 
 
 class SignUpSerializer(BaseAuthSerializer):
@@ -187,7 +188,7 @@ class TokenSerializer(BaseAuthSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     """Сериализатор для модели пользователя."""
 
-    username = ca.USERNAME_FIELD
+    username = USERNAME_FIELD
 
     class Meta:
         model = User
@@ -201,7 +202,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ForAdminSerializer(serializers.ModelSerializer):
     """Сериализатор модели пользователя с правами администратора."""
 
-    username = ca.USERNAME_FIELD
+    username = USERNAME_FIELD
 
     class Meta:
         model = User
