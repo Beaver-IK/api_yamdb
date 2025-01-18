@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.db.models import Avg
+from django.db.models import Avg, get_or_create
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
@@ -118,16 +118,10 @@ class SignUpView(APIView):
         serializer.is_valid(raise_exception=True)
         username = serializer.validated_data['username']
         email = serializer.validated_data['email']
-        try:
-            user = User.objects.get(email=email, username=username)
-            user.generate_code()
-            user.save()
-            send_activation_email(user)
-        except User.DoesNotExist:
-            user = User.objects.create_user(username=username, email=email)
-            user.generate_code()
-            user.save()
-            send_activation_email(user)
+        user = User.objects.get_or_create(email=email, username=username)
+        user.generate_code()
+        user.save()
+        send_activation_email(user)
         return Response(
             dict(email=user.email, username=user.username),
             status=status.HTTP_200_OK,
