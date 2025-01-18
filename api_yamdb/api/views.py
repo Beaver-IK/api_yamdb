@@ -1,118 +1,70 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, mixins, status, viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (AllowAny, IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from api import permissions as pms
 from api import serializers as sz
-from api.utils import build_filter_for_title, send_activation_email
+from api.filters import TitleFilter
+from api.utils import send_activation_email
+from api.viewsets import ListCreateDestroyViewSet
 from reviews.models import Category, Genre, Review, Title
 from users.authentication import generate_jwt_token
 
 User = get_user_model()
 
 
-class CategoryViewSet(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet,
-):
+class CategoryViewSet(ListCreateDestroyViewSet):
     """Вьюсет для управления категориями."""
 
-    queryset = Category.objects.all().order_by('name')
+    queryset = Category.objects.order_by('name')
+    serializer_class = sz.CategoryListCreateSerializer
     lookup_field = 'slug'
-    permission_classes = [pms.IsAdminOrReadOnly]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-
-    def get_serializer_class(self):
-        if self.action in ['list', 'create']:
-            return sz.CategoryListCreateSerializer
-        return sz.CategorySerializer
 
 
-class GenreViewSet(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DestroyModelMixin,
-    viewsets.GenericViewSet,
-):
+class GenreViewSet(ListCreateDestroyViewSet):
     """Вьюсет для управления жанрами."""
 
     queryset = Genre.objects.order_by('name')
+    serializer_class = sz.GenreListCreateSerializer
     lookup_field = 'slug'
-    permission_classes = [pms.IsAdminOrReadOnly]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
-
-    def get_serializer_class(self):
-        if self.action in ['list', 'create']:
-            return sz.GenreListCreateSerializer
-        return sz.GenreSerializer
 
 
 class TitleViewSet(viewsets.ModelViewSet):
     """Вьюсет для управления произведениями."""
 
-    queryset = Title.objects.all().order_by('name')
+    queryset = Title.objects.order_by('name')
     permission_classes = [pms.IsAdminOrReadOnly]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TitleFilter
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_serializer_class(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ('list', 'retrieve'):
             return sz.TitleReadSerializer
-        return sz.TitleListCreateSerializer
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        filters_dict = build_filter_for_title(self.request.query_params)
-        if filters_dict:
-            queryset = queryset.filter(**filters_dict)
-        queryset = queryset.annotate(rating=Avg('reviews_set__score'))
-        return queryset
+        return sz.TitleWriteSerializer
 
     def perform_create(self, serializer):
-        return serializer.save()
+        serializer.save()
 
     def perform_update(self, serializer):
-        return serializer.save()
+        serializer.save()
 
-    def perform_response(self, instance, status_code):
-        read_serializer = sz.TitleReadSerializer(
-            instance, context=self.get_serializer_context()
-        )
-        return Response(read_serializer.data, status=status_code)
+    def perform_create(self, serializer):
+        serializer.save()
 
-    def create(self, request, *args, **kwargs):
-        write_serializer = sz.TitleListCreateSerializer(
-            data=request.data, context=self.get_serializer_context()
-        )
-        write_serializer.is_valid(raise_exception=True)
-        instance = self.perform_create(write_serializer)
-        return self.perform_response(instance, status.HTTP_201_CREATED)
-
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-        partial = kwargs.pop('partial', True)
-        instance = self.get_object()
-        write_serializer = sz.TitleListCreateSerializer(
-            instance,
-            data=request.data,
-            partial=partial,
-            context=self.get_serializer_context(),
-        )
-        write_serializer.is_valid(raise_exception=True)
-        instance = self.perform_update(write_serializer)
-        return self.perform_response(instance, status.HTTP_200_OK)
+    def perform_update(self, serializer):
+        serializer.save()
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

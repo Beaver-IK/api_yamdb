@@ -1,10 +1,37 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Avg
+from django.utils.translation import gettext_lazy as _
 
+from .validators import validate_year_not_exceed_current
 from reviews import constants as cr
 
 User = get_user_model()
+
+
+class BaseCategoryGenre(models.Model):
+    """Абстрактная модель для моделей Category и Genre."""
+
+    name = models.CharField(
+        max_length=cr.MAX_NAME_LENGTH,
+        unique=True,
+        verbose_name=_("Название"),
+        help_text=_("Уникальное название"),
+    )
+    slug = models.SlugField(
+        max_length=cr.MAX_SLUG_LENGTH,
+        unique=True,
+        verbose_name=_("Slug"),
+        help_text=_("Уникальная метка"),
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class RCBase(models.Model):
@@ -25,53 +52,74 @@ class RCBase(models.Model):
         abstract = True
 
 
-class Category(models.Model):
+class Category(BaseCategoryGenre):
     """Модель для категорий произведений."""
 
-    name = models.CharField(max_length=cr.MAX_NAME_LENGTH, unique=True)
-    slug = models.SlugField(max_length=cr.MAX_SLUG_LENGTH, unique=True)
-
-    class Meta:
-        verbose_name = 'Category'
-        verbose_name_plural = 'Categories'
-
-    def __str__(self):
-        return self.name
+    class Meta(BaseCategoryGenre.Meta):
+        verbose_name = _('Категория')
+        verbose_name_plural = _('Категории')
 
 
-class Genre(models.Model):
+class Genre(BaseCategoryGenre):
     """Модель для жанров произведений."""
 
-    name = models.CharField(max_length=cr.MAX_NAME_LENGTH, unique=True)
-    slug = models.SlugField(max_length=cr.MAX_SLUG_LENGTH, unique=True)
-
-    class Meta:
-        verbose_name = 'Genre'
-        verbose_name_plural = 'Genres'
-
-    def __str__(self):
-        return self.name
+    class Meta(BaseCategoryGenre.Meta):
+        verbose_name = _('Жанр')
+        verbose_name_plural = _('Жанры')
 
 
 class Title(models.Model):
-    """Модель для произведений (фильмы, книги и т.д.)."""
+    """Модель для произведений (фильмы, книги и т.д.).
 
-    name = models.CharField(max_length=cr.MAX_NAME_LENGTH)
-    year = models.PositiveIntegerField()
-    description = models.TextField(blank=True, null=True)
-    category = models.ForeignKey(
-        Category, on_delete=models.SET_NULL, null=True, related_name='titles'
+    NOTE:
+    Тесты Я.Практикума требуют, чтобы у Title было физическое поле rating
+    и метод update_average_rating, вызываемый при создании/обновлении Review.
+    Поэтому поле rating оставлено в базе и обновляется вручную, хотя обычно
+    рейтинг можно вычислять "на лету" с помощью annotate() при GET-запросах.
+    """
+
+    name = models.CharField(
+        max_length=cr.MAX_NAME_LENGTH,
+        verbose_name=_("Название"),
+        db_index=True,
+        help_text=_("Название произведения"),
     )
-    genre = models.ManyToManyField(Genre, related_name='titles')
-    reviews = models.ManyToManyField(
-        'Review',
-        related_name='title_reviews',
+    year = models.SmallIntegerField(
+        verbose_name=_("Год выпуска"),
+        validators=[validate_year_not_exceed_current],
+        db_index=True,
+    )
+    description = models.TextField(
         blank=True,
+        null=True,
+        verbose_name=_("Описание"),
+    )
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='titles',
+        verbose_name=_("Категория"),
+    )
+    genre = models.ManyToManyField(
+        Genre, related_name='titles', verbose_name=_("Жанры")
+    )
+    rating = models.IntegerField(
+        null=True,
+        default=None,
+        verbose_name=_("Рейтинг"),
+        help_text=_("Средний рейтинг произведения, пересчитывается."),
     )
 
     class Meta:
-        verbose_name = 'Title'
-        verbose_name_plural = 'Titles'
+        verbose_name = _("Произведение")
+        verbose_name_plural = _("Произведения")
+        ordering = ['name']
+
+    def update_average_rating(self):
+        average = self.reviews_set.aggregate(Avg('score'))['score__avg']
+        self.rating = round(average) if average is not None else None
+        self.save(update_fields=['rating'])
 
     def __str__(self):
         return self.name

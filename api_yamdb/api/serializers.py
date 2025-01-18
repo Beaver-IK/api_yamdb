@@ -55,87 +55,52 @@ class GenreListCreateSerializer(serializers.ModelSerializer):
 # =====================================
 # Title Serializers
 # =====================================
-class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели произведения (базовый)."""
+class TitleWriteSerializer(serializers.ModelSerializer):
+    """Сериализатор для создания и редактирования Title."""
 
     category = serializers.SlugRelatedField(
-        queryset=Category.objects.all(),
         slug_field='slug',
+        queryset=Category.objects.all(),
         required=True,
     )
     genre = serializers.SlugRelatedField(
         many=True,
+        slug_field='slug',
         queryset=Genre.objects.all(),
-        slug_field='slug',
-        required=True,
-    )
-
-    class Meta:
-        model = Title
-        fields = ca.TITLE_FIELDS
-        read_only_fields = ca.READ_ONLY_ID
-
-
-class TitleListCreateSerializer(serializers.ModelSerializer):
-    """Сериализатор для списка и создания произведений без поля id."""
-
-    category = serializers.SlugRelatedField(
-        queryset=Category.objects.all(),
-        slug_field='slug',
-        required=True,
-    )
-    genre = serializers.SlugRelatedField(
-        many=True,
-        queryset=Genre.objects.all(),
-        slug_field='slug',
         required=True,
     )
     description = serializers.CharField(required=False, allow_blank=True)
+    rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
         fields = ca.TITLE_FIELDS
-        read_only_fields = ca.READ_ONLY_ID
+        read_only_fields = ('id',)
 
     def validate_genre(self, value):
-        """Проверяет, что список жанров не пуст."""
-        return utils.validate_not_empty(value, 'жанров')
+        from api.utils import validate_not_empty
+
+        return validate_not_empty(value, 'жанров')
 
     def validate_year(self, value):
-        """Проверяет, что год произведения не превышает текущий."""
-        return utils.validate_year_not_exceed_current(value)
+        from api.utils import validate_year_not_exceed_current
 
-    def create(self, validated_data):
-        """Создаёт произведение и устанавливает жанры."""
-        genres = validated_data.pop('genre')
-        title = Title.objects.create(**validated_data)
-        title.genre.set(genres)
-        return title
+        return validate_year_not_exceed_current(value)
 
-    def update(self, instance, validated_data):
-        """Обновляет произведение и жанры при необходимости."""
-        genres = validated_data.pop('genre', None)
-        instance = utils.update_instance_fields(instance, validated_data)
-        if genres is not None:
-            instance.genre.set(genres)
-        return instance
+    def to_representation(self, instance):
+        return TitleReadSerializer(instance, context=self.context).data
 
 
 class TitleReadSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели произведения с полем рейтинга."""
+    """Сериализатор для чтения с вложенными сериализаторами и рейтингом."""
 
     category = CategoryListCreateSerializer(read_only=True)
     genre = GenreListCreateSerializer(many=True, read_only=True)
     rating = serializers.IntegerField(read_only=True)
-    description = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        default="",
-    )
 
     class Meta:
         model = Title
-        fields = (*ca.TITLE_FIELDS, 'rating')
+        fields = ca.TITLE_FIELDS
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -178,9 +143,7 @@ class TokenSerializer(BaseAuthSerializer):
         except KeyError as e:
             raise ValidationError(e)
         if user.confirmation_code != confirmation_code:
-            raise ValidationError(
-                dict(confirmation_code='Неверный код подтверждения')
-            )
+            raise ValidationError(dict(confirmation_code='Неверный код подтверждения'))
         return attrs
 
 
@@ -232,10 +195,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         if request.method == 'POST':
             title_id = self.context['view'].kwargs.get('title_id')
             author = request.user
-            if Review.objects.filter(
-                title_id=title_id,
-                author=author
-            ).exists():
+            if Review.objects.filter(title_id=title_id, author=author).exists():
                 raise serializers.ValidationError(
                     'Вы уже оставили отзыв для этого произведения.'
                 )
