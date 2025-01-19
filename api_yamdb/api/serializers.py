@@ -6,7 +6,7 @@ from rest_framework.relations import SlugRelatedField
 from api import constants as ca
 from api import utils
 from api.fields import USERNAME_FIELD
-from api.utils import validate_not_empty
+from api.utils import validate_not_empty, validate_year_not_exceed_current
 from reviews.models import Category, Comment, Genre, Review, Title
 from users import constants as cu
 
@@ -82,8 +82,6 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         return validate_not_empty(value, 'жанров')
 
     def validate_year(self, value):
-        from api.utils import validate_year_not_exceed_current
-
         return validate_year_not_exceed_current(value)
 
     def to_representation(self, instance):
