@@ -21,17 +21,17 @@ class CustomUserAdmin(UserAdmin):
                 }
          ),
         ('Персональная информация', {'fields': ('first_name',
-                                      'last_name',
-                                      'email',
-                                      'bio',
-                                      'role')
+                                                'last_name',
+                                                'email',
+                                                'bio',
+                                                'role')
                                      }
          ),
         ('Доступы', {'fields': ('is_active',
-                                    'is_staff',
-                                    'is_superuser',
-                                    'groups',
-                                    )
+                                'is_staff',
+                                'is_superuser',
+                                'groups',
+                                )
                      }
          ),
         ('Даты входа и регистрации', {'fields': ('last_login',
