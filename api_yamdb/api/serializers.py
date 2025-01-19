@@ -6,6 +6,7 @@ from rest_framework.relations import SlugRelatedField
 from api import constants as ca
 from api import utils
 from api.fields import USERNAME_FIELD
+from api.utils import validate_not_empty
 from reviews.models import Category, Comment, Genre, Review, Title
 from users import constants as cu
 
@@ -78,8 +79,6 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def validate_genre(self, value):
-        from api.utils import validate_not_empty
-
         return validate_not_empty(value, 'жанров')
 
     def validate_year(self, value):
@@ -105,7 +104,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         if representation.get('description') is None:
-            representation['description'] = ""
+            representation['description'] = ''
         if representation.get('rating') is None:
             representation['rating'] = None
         return representation

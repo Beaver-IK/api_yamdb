@@ -20,23 +20,23 @@ class CustomUserAdmin(UserAdmin):
                            'password')
                 }
          ),
-        ('Personal info', {'fields': ('first_name',
+        ('Персональная информация', {'fields': ('first_name',
                                       'last_name',
                                       'email',
                                       'bio',
                                       'role')
-                           }
+                                     }
          ),
-        ('Permissions', {'fields': ('is_active',
+        ('Доступы', {'fields': ('is_active',
                                     'is_staff',
                                     'is_superuser',
                                     'groups',
                                     )
-                         }
+                     }
          ),
-        ('Important dates', {'fields': ('last_login',
-                                        'date_joined')
-                             }
+        ('Даты входа и регистрации', {'fields': ('last_login',
+                                                 'date_joined')
+                                      }
          ),
     )
     search_fields = ('username', 'email', 'first_name', 'last_name')

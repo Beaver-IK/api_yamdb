@@ -3,21 +3,21 @@ from rest_framework.routers import DefaultRouter
 
 from api import views as v
 
-router = DefaultRouter()
-router.register('categories', v.CategoryViewSet, basename='category')
-router.register('genres', v.GenreViewSet, basename='genre')
-router.register('titles', v.TitleViewSet, basename='title')
-router.register(
+router_v1 = DefaultRouter()
+router_v1.register('categories', v.CategoryViewSet, basename='category')
+router_v1.register('genres', v.GenreViewSet, basename='genre')
+router_v1.register('titles', v.TitleViewSet, basename='title')
+router_v1.register(
     r'titles/(?P<title_id>\d+)/reviews',
     v.ReviewViewSet,
     basename='review'
 )
-router.register(
+router_v1.register(
     r'titles/(?P<title_id>\d+)/reviews/(?P<review_id>\d+)/comments',
     v.CommentViewSet,
     basename='comment'
 )
-router.register('users', v.UsersViewSet, basename='users')
+router_v1.register('users', v.UsersViewSet, basename='users')
 
 auth_url = [
     (path('signup/', v.SignUpView.as_view(),
@@ -28,5 +28,5 @@ auth_url = [
 
 urlpatterns = [
     path('v1/auth/', include(auth_url)),
-    path('v1/', include(router.urls)),
+    path('v1/', include(router_v1.urls)),
 ]

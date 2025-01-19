@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
 
-from .models import Category, Comment, Genre, Review, Title
+from reviews.models import Category, Comment, Genre, Title, Review
 
 admin.site.unregister(Group)
 

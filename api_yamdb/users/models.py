@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import timezone
 
 from users import constants as c
+from api.validators import NotMeValidator
 
 
 class CustomUserManager(BaseUserManager):
@@ -46,12 +47,6 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         MODERATOR = 'moderator', 'Moderator'
         ADMIN = 'admin', 'Admin'
 
-    """ROLE_CHOICES = [
-        ('user', 'User'),
-        ('moderator', 'Moderator'),
-        ('admin', 'Admin')
-    ]"""
-
     username = models.CharField(
         max_length=c.MAX_LENGTH_USERNAME,
         unique=True,
@@ -65,6 +60,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                 message=c.MESSAGE,
                 code='invalid_username',
             ),
+            NotMeValidator,
         ],
     )
     email = models.EmailField(max_length=c.EMAIL_LENGTH, unique=True)
